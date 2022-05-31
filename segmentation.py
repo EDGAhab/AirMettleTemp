@@ -118,3 +118,5 @@ size.append(sum)
                 
 print(size)
 
+#之后是outlier和grouping
+
