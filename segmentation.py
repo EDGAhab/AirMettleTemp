@@ -271,8 +271,8 @@ print(size)
 print("Succeed in getting video size between IDRs ")
 ####### make them into tuples
 newIDR = [0] + IDR
-output = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
-print(output)
+IDRSize = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
+print(IDRSize)
 
 ### Find the mean value without outliers
 
