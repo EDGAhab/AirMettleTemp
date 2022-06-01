@@ -22,6 +22,7 @@ output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
+os.mkdir(os.path.join(output_dir, 'clips'))
 # read mp4
 atom_name = {
     'ftyp': b'66747970', 
@@ -166,9 +167,10 @@ IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
 
 
 ######### IDR start time, offset position, timerange的code
-start_time = [] #start_time = [0]+IDR+[whole video length]
+start_time = [] #start_time = [0]+[IDR start time]+[whole video length]
 range = []
 offset= []
+offset_time = []
 with open(IDRInfoPath, 'r') as file:
     csvreader = csv.reader(file)
     for row in csvreader:
@@ -181,6 +183,7 @@ with open(IDRInfoPath, 'r') as file:
             
             s = ''.join(x for x in result2 if x.isdigit())
             offset.append(int(s))
+            offset_time.append((int(s), float(result)))
 
             
         if "Lsize" in row[0]:
@@ -195,6 +198,7 @@ file.close()
 # print(range)
 if(start_time[0] != 0):
     start_time=[0]+start_time
+    offset_time=[(0,0)]+offset_time
 
 i = 1
 while i < len(start_time):
@@ -269,10 +273,6 @@ while(tupleIndex < len(tuple)):
 size.append(sum)
 print(size)
 print("Succeed in getting video size between IDRs ")
-####### make them into tuples
-newIDR = [0] + IDR
-IDRSize = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
-print(IDRSize)
 
 ### Find the mean value without outliers
 
@@ -297,4 +297,31 @@ for i in size:
         
 
 final_mean = np.mean(np.array(clean_data))  ## final_mean is what we what 
+
+## Grouping input=size, output=[start_offset]  =>
+
+## find the corresponding partition time based on position
+# start_offset = [0, 9000, 10000, 10300]
+# dct = dict((x,y) for x,y in offset_time)
+# partition_time = []
+# for i in start_offset:
+#     partition_time.append(dct[i])
+
+# partition_time.append(start_time[-1])
+
+## video cut
+# cut video
+
+end_idx=1
+while end_idx < len(start_time):
+    cut_cmd='ffmpeg -i {} -ss {} -to {} -c:v libx264 -c:a copy -loglevel quiet {}/clip_{}.mp4'.format(
+    input_file, start_time[end_idx-1], start_time[end_idx], 
+    os.path.join(output_dir, 'clips'), end_idx)
+    end_idx +=1
+    exit_code = os.system(cut_cmd)
+    if exit_code != 0:
+        print('command failed:', cut_cmd)
+    
+print('Succeed in partition videos base on IDR')
+
 
