@@ -271,10 +271,15 @@ while(tupleIndex < len(tuple)):
     tupleIndex = tupleIndex + 1
 # print("Last Value: " + str(sum)) 
 size.append(sum)
-print(size)
 print("Succeed in getting video size between IDRs ")
 newIDR = [0] + IDR
-size2 = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
+size2 = []
+i = 0
+while i < len(newIDR):
+    lst = [newIDR[i], size[i]]
+    if(lst != [0,0]):
+        size2.append((newIDR[i], size[i]))
+    i+=1
 
 
 ### Find the mean value without outliers
@@ -282,8 +287,6 @@ size2 = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
 q_2 = np.quantile(size, .50)
 q_1 = np.quantile(size, .25)
 q_3 = np.quantile(size, .75)
-print(q_1)
-print(q_3)
 iqr = q_3-q_1
 upper_fence = q_3 + (1.5*iqr)
 lower_fence = q_1 - (1.5*iqr)
@@ -302,37 +305,9 @@ for i in size:
 final_mean = np.mean(np.array(clean_data))  ## final_mean is what we what 
 
 ## Grouping input=size, output=[start_offset]  =>
-
-## find the corresponding partition time based on position
-# start_offset = [0, 9000, 10000, 10300]
-# dct = dict((x,y) for x,y in offset_time)
-# partition_time = []
-# for i in start_offset:
-#     partition_time.append(dct[i])
-
-# partition_time.append(start_time[-1])
-
-## video cut
-# cut video
-
-end_idx=1
-while end_idx < len(start_time):
-    cut_cmd='ffmpeg -i {} -ss {} -to {} -c:v libx264 -c:a copy -loglevel quiet {}/clip_{}.mp4'.format(
-    input_file, start_time[end_idx-1], start_time[end_idx], 
-    os.path.join(output_dir, 'clips'), end_idx)
-    end_idx +=1
-    exit_code = os.system(cut_cmd)
-    if exit_code != 0:
-        print('command failed:', cut_cmd)
-    
-print('Succeed in partition videos base on IDR')
-
-
 #grouping
-size2 = [(1,110),(2,9),(3,50),(4,30),(5,1000),(6,1),(7,500),(8,80)]
 tot_len = 0
-output = []
-arbitraryNumber = 200
+arbitraryNumber = 4500000
 i = 0
 
 tempSize = 0
@@ -352,9 +327,42 @@ while i < len(size2):
     else:
         i = i + 1
         
-output2 = []
+start_offset = []
 for a in size2:
-    output2.append(a[0])
-print("output:")
-print(output2) #IDR Candidate
+    start_offset.append(a[0])
+
+print('******** (IDR,size) *******')
+print(size2)
+
+print("***** Candidate IDR*******")
+print(start_offset)
+
+
+## find the corresponding partition time based on position
+
+dct = dict((x,y) for x,y in offset_time)
+partition_time = []
+for i in start_offset:
+    partition_time.append(dct[i])
+
+partition_time.append(start_time[-1])
+print(partition_time)
+
+## video cut
+# cut video
+
+end_idx=1
+while end_idx < len(partition_time):
+    cut_cmd='ffmpeg  -ss {} -i {} -to {} -c:v copy -avoid_negative_ts 1 -loglevel quiet {}/clip_{}.mp4'.format(
+    partition_time[end_idx-1], input_file, partition_time[end_idx]-partition_time[end_idx-1], 
+    os.path.join(output_dir, 'clips'), end_idx-1)
+    end_idx +=1
+    exit_code = os.system(cut_cmd)
+    if exit_code != 0:
+        print('command failed:', cut_cmd)
+    
+print('Succeed in partition videos base on IDR')
+
+
+
 
