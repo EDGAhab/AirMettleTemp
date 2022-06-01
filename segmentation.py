@@ -273,6 +273,9 @@ while(tupleIndex < len(tuple)):
 size.append(sum)
 print(size)
 print("Succeed in getting video size between IDRs ")
+newIDR = [0] + IDR
+size2 = [(newIDR[i], size[i]) for i in range(0, len(newIDR))]
+
 
 ### Find the mean value without outliers
 
@@ -324,4 +327,34 @@ while end_idx < len(start_time):
     
 print('Succeed in partition videos base on IDR')
 
+
+#grouping
+size2 = [(1,110),(2,9),(3,50),(4,30),(5,1000),(6,1),(7,500),(8,80)]
+tot_len = 0
+output = []
+arbitraryNumber = 4500000  #4.5MB
+i = 0
+
+tempSize = 0
+while i < len(size2):
+    if (len(size2) == 1):
+        output.append(size2[i][0])
+    else:
+        if(size2[i][1] < arbitraryNumber and i != len(size2) - 1):
+            temp = size2[i][1] + size2[i + 1][1]
+            diff1 = abs(temp - arbitraryNumber)
+            diff2 = abs(size2[i][1] - arbitraryNumber)
+            if(diff1 <= diff2 or size2[i][1] <= 0.1*arbitraryNumber):
+                size2[i] = (size2[i][0], temp)
+                size2.pop(i+1)
+            else:
+                i = i + 1
+        else:
+            i = i + 1
+        
+output = []  #输出grouping之后的IDR Candidate
+for a in size2:
+    output.append(a[0])
+print("IDR Candidate:")
+print(output)
 
