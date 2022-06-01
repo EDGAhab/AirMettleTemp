@@ -332,14 +332,12 @@ print('Succeed in partition videos base on IDR')
 size2 = [(1,110),(2,9),(3,50),(4,30),(5,1000),(6,1),(7,500),(8,80)]
 tot_len = 0
 output = []
-arbitraryNumber = 4500000  #4.5MB
+arbitraryNumber = 200
 i = 0
 
 tempSize = 0
 while i < len(size2):
-    if (len(size2) == 1):
-        output.append(size2[i][0])
-    else:
+    if(len(size2) != 1):
         if(size2[i][1] < arbitraryNumber and i != len(size2) - 1):
             temp = size2[i][1] + size2[i + 1][1]
             diff1 = abs(temp - arbitraryNumber)
@@ -351,10 +349,12 @@ while i < len(size2):
                 i = i + 1
         else:
             i = i + 1
+    else:
+        i = i + 1
         
-output = []  #输出grouping之后的IDR Candidate
+output2 = []
 for a in size2:
-    output.append(a[0])
-print("IDR Candidate:")
-print(output)
+    output2.append(a[0])
+print("output:")
+print(output2) #IDR Candidate
 
