@@ -139,10 +139,10 @@ if args.save_tape:
                 video_table[2].append([max_stco])
         else : 
             audio_ptr[select_trakid] +=1
+            if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
+                    audio_table[select_trakid][2].append([max_stco])
+                             
 
-        
-                
-        
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
             flag = False
 
