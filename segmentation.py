@@ -224,15 +224,15 @@ sum = 0  #累计
 
 while(IDRIndex < len(IDR)):
     #不可能的情况：IDR不在video里，直接跳过
-    if (IDR[IDRIndex] < smallest or IDR[IDRIndex] > largest): 
+    if (IDR[IDRIndex] < smallest or last > largest): 
         IDRIndex = IDRIndex + 1
-    else: 
+    elif(IDR[IDRIndex] >= previous): 
         #第一个IDR
         if (firstToken == True):
             #如果在tuple里，那就直接计算，不在的话就看下一个tuple
             if (IDR[IDRIndex] >= tuple[tupleIndex][0] and IDR[IDRIndex] <= tuple[tupleIndex][1]):
                 appendValue = IDR[IDRIndex] - tuple[tupleIndex][0] + sum
-                # print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
+                print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
                 size.append(appendValue)
                 previous = IDR[IDRIndex]
                 IDRIndex = IDRIndex + 1
@@ -249,7 +249,7 @@ while(IDRIndex < len(IDR)):
                     appendValue = IDR[IDRIndex] - previous
                 else:
                     appendValue = IDR[IDRIndex] - tuple[tupleIndex][0] + sum
-                # print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
+                print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
                 size.append(appendValue)
                 previous = IDR[IDRIndex]
                 IDRIndex = IDRIndex + 1
@@ -262,6 +262,8 @@ while(IDRIndex < len(IDR)):
                     sum = sum + tuple[tupleIndex][1] - tuple[tupleIndex][0]
                 sameTuple = False
                 tupleIndex = tupleIndex + 1
+    else:
+        IDR.pop(IDRIndex)
 
 while(tupleIndex < len(tuple)):
     if (last >= tuple[tupleIndex][0] and last <= tuple[tupleIndex][1]):
