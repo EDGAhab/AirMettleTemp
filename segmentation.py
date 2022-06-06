@@ -156,14 +156,14 @@ print("Succeed in get video offsets tuple")
 
 ####### record the IDR info 
 
-cut_cmd = 'ffmpeg -skip_frame nokey -i {} -vf showinfo -vsync 0 -f null - > {} 2>&1'.format(
-    input_file, os.path.join(output_dir, 'IDRinfo.csv')
+cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
+    os.path.join(output_dir, 'IDRinfo.log'), input_file
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
     print('Succeed in getting IDR info')
 
-IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
+IDRInfoPath = os.path.join(output_dir, 'IDRinfo.log')
 
 
 ######### IDR start time, offset position, timerange的code
@@ -174,8 +174,9 @@ with open(IDRInfoPath, 'r') as file:
     lines = file.read().splitlines()
     for row in lines:
         if "stream 0" in row and "keyframe 1" in row:
-            frame.append(int(row.split(',')[2].split(' ', 2)[2], 16))
-            offset.append(int(row.split(',')[3].split(' ', 2)[2], 16))
+            #  s = ''.join(x for x in result2 if x.isdigit())
+            frame.append(row.split(',')[6].split(' ', 2)[2])
+            offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
 
 
 file.close()
@@ -269,7 +270,7 @@ while i < len(newIDR):
 
 
 
-## Grouping input=size, output=[start_offset]  =>
+## Grouping input=size2, output=[start_offset]  =>
 #grouping
 tot_len = 0
 arbitraryNumber = 4500000
@@ -304,30 +305,35 @@ print("***** Candidate IDR*******")
 print(len(start_offset))
 
 print("***** Candidate sample*******")
-print(len(frame))
+print(frame)
 
 ## find the corresponding partition time based on position
 
-dct = dict((x,y) for x,y in offset_time)
-partition_time = []
-for i in start_offset:
-    partition_time.append(dct[i])
+# dct = dict((x,y) for x,y in offset_time)
+# partition_time = []
+# for i in start_offset:
+#     partition_time.append(dct[i])
 
-partition_time.append(start_time[-1])
-print(partition_time)
+# partition_time.append(start_time[-1])
+# print(partition_time)
 
 ## video cut
 # cut video
 
-end_idx=1
-while end_idx < len(partition_time):
-    cut_cmd='ffmpeg  -ss {} -i {} -to {} -c:v copy -avoid_negative_ts 1 -loglevel quiet {}/clip_{}.mp4'.format(
-    partition_time[end_idx-1], input_file, partition_time[end_idx]-partition_time[end_idx-1], 
-    os.path.join(output_dir, 'clips'), end_idx-1)
-    end_idx +=1
-    exit_code = os.system(cut_cmd)
-    if exit_code != 0:
-        print('command failed:', cut_cmd)
+# end_idx=1
+# while end_idx < len(partition_time):
+#     cut_cmd='ffmpeg  -ss {} -i {} -to {} -c:v copy -avoid_negative_ts 1 -loglevel quiet {}/clip_{}.mp4'.format(
+#     partition_time[end_idx-1], input_file, partition_time[end_idx]-partition_time[end_idx-1], 
+#     os.path.join(output_dir, 'clips'), end_idx-1)
+#     end_idx +=1
+#     exit_code = os.system(cut_cmd)
+#     if exit_code != 0:
+#         print('command failed:', cut_cmd)
+
+string = ",".join(str(x) for x in frame)
+cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy "%03d_clip.mp4"'.format(
+    input_file, string
+)
     
 print('Succeed in partition videos base on IDR')
 
