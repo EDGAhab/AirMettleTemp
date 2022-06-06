@@ -177,6 +177,10 @@ with open(IDRInfoPath, 'r') as file:
         #print("pts_time" in row[0])
 
         if "pts_time" in row[0]:
+            frame.append(int(row[0].split(',')[2].split(' ', 2)[2], 16))
+            offset.append(int(row[0].split(',')[3].split(' ', 2)[2], 16))
+
+
             result = row[0].split(':')[3].split(' ', 1)[0]
             start_time.append(float(result))
             result2 = row[0].split(':')[4]
@@ -205,6 +209,8 @@ while i < len(start_time):
     range.append(start_time[i] - start_time[i - 1])
     i+=1
 
+#tuple: [(2,5), (6,9)]
+#IDR: [3,7,8]
 
 #通过byteoffset和IDR来找IDR之间的size:
 size = []
@@ -284,27 +290,6 @@ while i < len(newIDR):
     i+=1
 
 
-### Find the mean value without outliers
-
-q_2 = np.quantile(size, .50)
-q_1 = np.quantile(size, .25)
-q_3 = np.quantile(size, .75)
-iqr = q_3-q_1
-upper_fence = q_3 + (1.5*iqr)
-lower_fence = q_1 - (1.5*iqr)
-
-clean_data = []
-outlier = []
-outlier_count = 0
-for i in size:
-    if i < lower_fence or i > upper_fence:
-        outlier_count += 1
-        outlier.append(i)
-    else:
-        clean_data.append(i)
-        
-
-final_mean = np.mean(np.array(clean_data))  ## final_mean is what we what 
 
 ## Grouping input=size, output=[start_offset]  =>
 #grouping
