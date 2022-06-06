@@ -175,7 +175,7 @@ with open(IDRInfoPath, 'r') as file:
     for row in lines:
         if "stream 0" in row and "keyframe 1" in row:
             #  s = ''.join(x for x in result2 if x.isdigit())
-            frame.append(row.split(',')[6].split(' ', 2)[2])
+            frame.append(int(row.split(',')[6].split(' ', 2)[2]))
             offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
 
 
@@ -330,10 +330,28 @@ print(frame)
 #     if exit_code != 0:
 #         print('command failed:', cut_cmd)
 
-string = ",".join(str(x) for x in frame)
-cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy "%03d_clip.mp4"'.format(
-    input_file, string
+cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
+    input_file, output_dir
 )
+exit_code = os.system(cut_cmd)
+if exit_code != 0:
+    print('command failed:', cut_cmd)
+
+    
+
+if 0 in frame:
+    frame.remove(0)
+
+string = ",".join(str(x) for x in frame)
+
+cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/%d_clip.mp4"'.format(
+    input_file, string, os.path.join(output_dir, 'clips')
+)
+
+print(cut_cmd)
+exit_code = os.system(cut_cmd)
+if exit_code != 0:
+    print('command failed:', cut_cmd)
     
 print('Succeed in partition videos base on IDR')
 
