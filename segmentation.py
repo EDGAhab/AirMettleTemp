@@ -244,6 +244,7 @@ while(IDRIndex < len(IDR)):
                 tupleIndex = tupleIndex + 1
     else:
         IDR.pop(IDRIndex)
+        frame.pop(IDRIndex)  ###修改
 
 while(tupleIndex < len(tuple)):
     if (last >= tuple[tupleIndex][0] and last <= tuple[tupleIndex][1]):
@@ -282,6 +283,7 @@ while i < len(size2):
             if(diff1 <= diff2 or size2[i][1] <= 0.1*arbitraryNumber):
                 size2[i] = (size2[i][0], temp)
                 size2.pop(i+1)
+                frame.pop(i+1) #####修改
             else:
                 i = i + 1
         else:
@@ -297,8 +299,10 @@ print('******** (IDR,size) *******')
 print(size2)
 
 print("***** Candidate IDR*******")
-print(start_offset)
+print(len(start_offset))
 
+print("***** Candidate sample*******")
+print(len(frame))
 
 ## find the corresponding partition time based on position
 
