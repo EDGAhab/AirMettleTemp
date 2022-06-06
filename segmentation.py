@@ -262,6 +262,8 @@ while i < len(newIDR):
     lst = [newIDR[i], size[i]]
     if(lst != [0,0]):
         size2.append((newIDR[i], size[i]))
+    else:
+        frame.pop(0)
     i+=1
 
 
