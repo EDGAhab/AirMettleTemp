@@ -167,47 +167,21 @@ IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
 
 
 ######### IDR start time, offset position, timerange的code
-start_time = [] #start_time = [0]+[IDR start time]+[whole video length]
-range = []
 offset= []
-offset_time = []
+
+frame = []
 with open(IDRInfoPath, 'r') as file:
-    csvreader = csv.reader(file)
-    for row in csvreader:
-        #print("pts_time" in row[0])
-
-        if "pts_time" in row[0]:
-            frame.append(int(row[0].split(',')[2].split(' ', 2)[2], 16))
-            offset.append(int(row[0].split(',')[3].split(' ', 2)[2], 16))
-
-
-            result = row[0].split(':')[3].split(' ', 1)[0]
-            start_time.append(float(result))
-            result2 = row[0].split(':')[4]
-            
-            s = ''.join(x for x in result2 if x.isdigit())
-            offset.append(int(s))
-            offset_time.append((int(s), float(result)))
-
-            
-        if "Lsize" in row[0]:
-            result1 = row[0].split('=')[5].split(' ', 1)[0]
-            total = int(result1.split(':')[0])*3600 + int(result1.split(':')[1])*60 + float(result1.split(':')[2])
-            sum = total
-            start_time.append(total) # this is the whole video length
+    lines = file.read().splitlines()
+    for row in lines:
+        if "stream 0" in row and "keyframe 1" in row:
+            frame.append(int(row.split(',')[2].split(' ', 2)[2], 16))
+            offset.append(int(row.split(',')[3].split(' ', 2)[2], 16))
 
 
 file.close()
 
-# print(range)
-if(start_time[0] != 0):
-    start_time=[0]+start_time
-    offset_time=[(0,0)]+offset_time
 
-i = 1
-while i < len(start_time):
-    range.append(start_time[i] - start_time[i - 1])
-    i+=1
+
 
 #tuple: [(2,5), (6,9)]
 #IDR: [3,7,8]
@@ -288,6 +262,7 @@ while i < len(newIDR):
     if(lst != [0,0]):
         size2.append((newIDR[i], size[i]))
     i+=1
+
 
 
 
