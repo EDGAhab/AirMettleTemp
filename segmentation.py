@@ -155,7 +155,7 @@ print("Succeed in get video offsets tuple")
 
 
 ####### record the IDR info 
-
+#command line to cut the video based on IDR frame, and figure out the place of IDR frame in all the frames
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
     os.path.join(output_dir, 'IDRinfo.log'), input_file
     )
@@ -170,15 +170,19 @@ IDRInfoPath = os.path.join(output_dir, 'IDRinfo.log')
 
 
 ######### IDR start time, offset position, timerange的code
+
 offset= []
 
 frame = []
+#we get the log file of IDR frame information, and we read the log file to get the information need: sample number, IDR byteoffset
 with open(IDRInfoPath, 'r') as file:
     lines = file.read().splitlines()
     for row in lines:
         if "stream 0" in row and "keyframe 1" in row:
             #  s = ''.join(x for x in result2 if x.isdigit())
+            #append sample number to frame, here we get IDR number
             frame.append(int(row.split(',')[6].split(' ', 2)[2]))
+            #get the offset of IDR
             offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
 
 
@@ -191,11 +195,11 @@ print('Success in getting frame, offset of IDR')
 #tuple: [(2,5), (6,9)]
 #IDR: [3,7,8]
 
-#通过byteoffset和IDR来找IDR之间的size:
+#find the size between IDR frames through the byteoffset information
 size = []
 smallest = tuple[0][0]
 largest = tuple[-1][1]
-IDR = [] #[frame, offset]
+IDR = [] #the IDR list stores [frame, offset]
 while i < len(offset):
     temp5 = [frame[i], offset[i]]
     IDR.append(temp5)
@@ -210,18 +214,18 @@ firstToken = True
 sameTuple = True
 
 previous = 0
-sum = 0  #累计
+sum = 0  #cumulated offset
 
 print('********** All IDR: [frame, offset] *********')
 print(IDR)
 while(IDRIndex < len(IDR)):
-    #不可能的情况：IDR不在video里，直接跳过
+    #the condition where IDR is not in the video
     if (IDR[IDRIndex][1] < smallest or last > largest): 
         IDRIndex = IDRIndex + 1
     elif(IDR[IDRIndex][1] >= previous): 
-        #第一个IDR
+        #the condition in the first IDR
         if (firstToken == True):
-            #如果在tuple里，那就直接计算，不在的话就看下一个tuple
+            #if IDR is inside the tuple, then we calculate offset directly, otherwise we jump to the next tuple
             if (IDR[IDRIndex][1] >= tuple[tupleIndex][0] and IDR[IDRIndex][1] <= tuple[tupleIndex][1]):
                 appendValue = IDR[IDRIndex][1] - tuple[tupleIndex][0] + sum
                 print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
@@ -233,7 +237,7 @@ while(IDRIndex < len(IDR)):
             else:
                 sum = sum + tuple[tupleIndex][1] - tuple[tupleIndex][0]
                 tupleIndex = tupleIndex + 1
-        #之后的IDR
+        #To calculate IDR offsets after the first tuple
         else:
             if (IDR[IDRIndex][1] >= tuple[tupleIndex][0] and IDR[IDRIndex][1] <= tuple[tupleIndex][1]):
                 appendValue = 0
