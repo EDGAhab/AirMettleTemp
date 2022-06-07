@@ -191,8 +191,12 @@ file.close()
 size = []
 smallest = tuple[0][0]
 largest = tuple[-1][1]
-IDR = offset
-last = IDR[-1]
+IDR = [] #[frame, offset]
+while i < len(offset):
+    temp5 = [frame[i], offset[i]]
+    IDR.append(temp5)
+
+last = IDR[-1][1]
 tupleIndex = 0
 IDRIndex = 0
 
@@ -205,17 +209,17 @@ sum = 0  #累计
 
 while(IDRIndex < len(IDR)):
     #不可能的情况：IDR不在video里，直接跳过
-    if (IDR[IDRIndex] < smallest or last > largest): 
+    if (IDR[IDRIndex][1] < smallest or last > largest): 
         IDRIndex = IDRIndex + 1
-    elif(IDR[IDRIndex] >= previous): 
+    elif(IDR[IDRIndex][1] >= previous): 
         #第一个IDR
         if (firstToken == True):
             #如果在tuple里，那就直接计算，不在的话就看下一个tuple
-            if (IDR[IDRIndex] >= tuple[tupleIndex][0] and IDR[IDRIndex] <= tuple[tupleIndex][1]):
-                appendValue = IDR[IDRIndex] - tuple[tupleIndex][0] + sum
-                print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
+            if (IDR[IDRIndex][1] >= tuple[tupleIndex][0] and IDR[IDRIndex][1] <= tuple[tupleIndex][1]):
+                appendValue = IDR[IDRIndex][1] - tuple[tupleIndex][0] + sum
+                print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
                 size.append(appendValue)
-                previous = IDR[IDRIndex]
+                previous = IDR[IDRIndex][1]
                 IDRIndex = IDRIndex + 1
                 sum = 0
                 firstToken = False
@@ -224,15 +228,15 @@ while(IDRIndex < len(IDR)):
                 tupleIndex = tupleIndex + 1
         #之后的IDR
         else:
-            if (IDR[IDRIndex] >= tuple[tupleIndex][0] and IDR[IDRIndex] <= tuple[tupleIndex][1]):
+            if (IDR[IDRIndex][1] >= tuple[tupleIndex][0] and IDR[IDRIndex][1] <= tuple[tupleIndex][1]):
                 appendValue = 0
                 if (sameTuple == True):
-                    appendValue = IDR[IDRIndex] - previous
+                    appendValue = IDR[IDRIndex][1] - previous
                 else:
-                    appendValue = IDR[IDRIndex] - tuple[tupleIndex][0] + sum
-                print("currIDR: " + str(IDR[IDRIndex]) + " Value: " + str(appendValue))
+                    appendValue = IDR[IDRIndex][1] - tuple[tupleIndex][0] + sum
+                print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
                 size.append(appendValue)
-                previous = IDR[IDRIndex]
+                previous = IDR[IDRIndex][1]
                 IDRIndex = IDRIndex + 1
                 sum = 0
                 sameTuple = True
@@ -245,7 +249,6 @@ while(IDRIndex < len(IDR)):
                 tupleIndex = tupleIndex + 1
     else:
         IDR.pop(IDRIndex)
-        frame.pop(IDRIndex)  ###修改
 
 while(tupleIndex < len(tuple)):
     if (last >= tuple[tupleIndex][0] and last <= tuple[tupleIndex][1]):
@@ -256,15 +259,13 @@ while(tupleIndex < len(tuple)):
 # print("Last Value: " + str(sum)) 
 size.append(sum)
 print("Succeed in getting video size between IDRs ")
-newIDR = [0] + IDR
+newIDR = [[0,0]] + IDR  #[frame, offset]
 size2 = []
 i = 0
 while i < len(newIDR):
-    lst = [newIDR[i], size[i]]
-    if(lst != [0,0]):
-        size2.append((newIDR[i], size[i]))
-    else:
-        frame.pop(0) ###修改
+    lst = [newIDR[i][0], newIDR[i][1], size[i]]
+    if(lst[1] != 0 and lst[2] != 0 ):
+        size2.append((newIDR[i][0], newIDR[i][1], size[i]))
     i+=1
 
 
@@ -279,14 +280,13 @@ i = 0
 tempSize = 0
 while i < len(size2):
     if(len(size2) != 1):
-        if(size2[i][1] < arbitraryNumber and i != len(size2) - 1):
-            temp = size2[i][1] + size2[i + 1][1]
+        if(size2[i][2] < arbitraryNumber and i != len(size2) - 1):
+            temp = size2[i][2] + size2[i + 1][2]
             diff1 = abs(temp - arbitraryNumber)
-            diff2 = abs(size2[i][1] - arbitraryNumber)
-            if(diff1 <= diff2 or size2[i][1] <= 0.1*arbitraryNumber):
-                size2[i] = (size2[i][0], temp)
+            diff2 = abs(size2[i][2] - arbitraryNumber)
+            if(diff1 <= diff2 or size2[i][2] <= 0.1*arbitraryNumber):
+                size2[i] = (size2[i][0], size2[i][1], temp)
                 size2.pop(i+1)
-                frame.pop(i+1) #####修改
             else:
                 i = i + 1
         else:
@@ -294,18 +294,16 @@ while i < len(size2):
     else:
         i = i + 1
         
-start_offset = []
+sample = []
 for a in size2:
-    start_offset.append(a[0])
+    sample.append(a[0])
 
-print('******** (IDR,size) *******')
+print('******** (frame number, IDR,size) *******')
 print(size2)
 
-print("***** Candidate IDR*******")
-print(len(start_offset))
+print("***** Candidate IDR frame number*******")
+print(sample)
 
-print("***** Candidate sample*******")
-print(frame)
 
 ## find the corresponding partition time based on position
 
