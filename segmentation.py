@@ -7,10 +7,8 @@ from utils import *
 import numpy as np
 
 
-
-####### find the tuple (start offset, end offset)
-
-#
+############################ To get All  Video Trunck info #######################################################
+# Read info from cmd, and create relative folder
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
@@ -26,7 +24,7 @@ os.mkdir(os.path.join(output_dir, 'clips'))
 
 
 
-# read mp4
+# Read input_file.mp4 to get moov_data, track info
 atom_name = {
     'ftyp': b'66747970', 
     'moov': b'6d6f6f76', 
@@ -47,7 +45,6 @@ st_name = {
 with open(input_file, 'rb') as f:
     hexdata = binascii.hexlify(f.read())
 
-# search for atom names
 print('Searching Atoms in input mp4...')
 offsets, atom_exist = parsing_atoms(hexdata, atom_name)
 
@@ -72,6 +69,10 @@ if len(audio_trak_idx) == 0:
     print('There\'s no audio/subtitle stream in this mp4...')
     shutil.rmtree(os.path.join(output_dir, 'other_streams'))
 
+
+
+# To get video trunk byteOffset, byteRange
+ 
 if args.save_tape:
 
     audio_table = []
@@ -142,39 +143,35 @@ arr1 = np.array(byteOffset)
 arr2 = np.array(byteRange)
 end_arr = np.add(arr1, arr2)
 
-tuple = np.array((byteOffset,end_arr)).T
-print("Succeed in get video offsets tuple")
+tuple = np.array((byteOffset,end_arr)).T  # all video trunck -- (byteOffset, byteOffset+byteRange)
+print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 
 
-####### record the IDR info 
-#command line to cut the video based on IDR frame, and figure out the place of IDR frame in all the frames
+
+############################ To get All IDR info #######################################################
+
+# record the All Frames info, including I, B,P frames ...
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
-    os.path.join(output_dir, 'IDRinfo.log'), input_file
+    os.path.join(output_dir, 'allFramesInfo.log'), input_file
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
-    print('Faild in getting IDR info')
-print('Success in getting IDRinfo.log')
+    print('Faild in getting Frames info')
+print('Success in getting allFramesInfo.log')
 
-IDRInfoPath = os.path.join(output_dir, 'IDRinfo.log')
+IDRInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 
 
-######### IDR start time, offset position, timerange的code
+# To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
+offset= [] # IDR byteoffset
+frame = [] # IDR Sample number 
 
-offset= []
-
-frame = []
-#we get the log file of IDR frame information, and we read the log file to get the information need: sample number, IDR byteoffset
 with open(IDRInfoPath, 'r') as file:
     lines = file.read().splitlines()
     for row in lines:
         if "stream 0" in row and "keyframe 1" in row:
-            #  s = ''.join(x for x in result2 if x.isdigit())
-            #append sample number to frame, here we get IDR number
             frame.append(int(row.split(',')[6].split(' ', 2)[2]))
-            #get the offset of IDR
             offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
-
 
 file.close()
 
@@ -182,11 +179,10 @@ print('Success in getting frame, offset of IDR')
 
 
 
-#tuple: [(2,5), (6,9)]
-#IDR: [3,7,8]
+
 
 #find the size between IDR frames through the byteoffset information
-size = []
+size = [] # to store the size between IDRs
 smallest = tuple[0][0]
 largest = tuple[-1][1]
 IDR = [] #the IDR list stores [frame, offset]
@@ -210,9 +206,10 @@ print('Success in getting all IDR: [frame, offset] *********')
 # print(IDR)
 
 while(IDRIndex < len(IDR)):
-    #the condition where IDR is not in the video
+    #the condition where IDR is not in the video (actually this situation doesn't exists )
     if (IDR[IDRIndex][1] < smallest or last > largest): 
         IDRIndex = IDRIndex + 1
+    # We only consider that all IDR byteoffset are increasing, otherwise we drop the wired IDR
     elif(IDR[IDRIndex][1] >= previous): 
         #the condition in the first IDR
         if (firstToken == True):
@@ -262,7 +259,7 @@ while(tupleIndex < len(tuple)):
 size.append(sum)
 print("Succeed in getting video size between IDRs ")
 newIDR = [[0,0]] + IDR  #[frame, offset]
-size2 = []
+size2 = [] # size2 is the tupple (frame, byte_offset, size)
 i = 0
 while i < len(newIDR):
     lst = [newIDR[i][0], newIDR[i][1], size[i]]
@@ -271,10 +268,9 @@ while i < len(newIDR):
     i+=1
 
 
+############################ To Grouping Video and find candidate IDRs #######################################################
 
-
-## Grouping input=size2, output=[start_offset]  =>
-#grouping
+# Grouping the videos to approximately 4.5 mb.
 tot_len = 0
 arbitraryNumber = 4500000
 i = 0
@@ -296,10 +292,9 @@ while i < len(size2):
     else:
         i = i + 1
         
-sample = []
+sample = []  # the sample number of candidate IDRs
 for a in size2:
     sample.append(a[0])
-
 
 
 print('Success in get the list: (sample_number, IDR_offset, byte_range)')
@@ -307,6 +302,8 @@ print('Success in get the list: (sample_number, IDR_offset, byte_range)')
 print("Total Candidate partition IDR number: ", len(sample))
 
 
+
+############################ To Cut Video #######################################################
 
 cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
     input_file, output_dir
