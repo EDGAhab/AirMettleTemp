@@ -3,26 +3,29 @@ import re
 import os
 import shutil
 import argparse
-import csv
 from utils import *
 import numpy as np
-import pandas as pd
-from statistics import mean, median
+
 
 
 ####### find the tuple (start offset, end offset)
+
+#
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
 args = parser.parse_args()
 input_file = args.input_file
 input_dir = os.path.dirname(input_file)
-# output_name = input_file.split('/')[-1].split('.')[0]+'.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
 os.mkdir(os.path.join(output_dir, 'clips'))
+
+
+
+
 # read mp4
 atom_name = {
     'ftyp': b'66747970', 
@@ -60,17 +63,6 @@ for i in range(len(atom_exist)):
         atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
         hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
 
-# write all bytes except for data in valid mdat
-# with open(os.path.join(output_dir, output_name), 'wb') as f:
-#     for i in range(len(atom_exist)):
-#         if atom_exist[sort_idx[i]] == 'mdat':
-#             f.write(binascii.unhexlify(
-#                 hexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
-#         else:
-#             f.write(binascii.unhexlify(
-#                 hexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
-# print('-'*30)
-# print('Finish writing mata-data into {}'.format(os.path.join(output_dir, output_name)))
 
 moov_byte_range = byte_range[sort_idx.index(atom_exist.index('moov'))]
 moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
@@ -159,8 +151,6 @@ print("Succeed in get video offsets tuple")
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
     os.path.join(output_dir, 'IDRinfo.log'), input_file
     )
-    
-
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
     print('Faild in getting IDR info')
@@ -212,8 +202,9 @@ sameTuple = True
 previous = 0
 sum = 0  #累计
 
-print('********** All IDR: [frame, offset] *********')
-print(IDR)
+print('Success in getting all IDR: [frame, offset] *********')
+# print(IDR)
+
 while(IDRIndex < len(IDR)):
     #不可能的情况：IDR不在video里，直接跳过
     if (IDR[IDRIndex][1] < smallest or last > largest): 
@@ -224,7 +215,7 @@ while(IDRIndex < len(IDR)):
             #如果在tuple里，那就直接计算，不在的话就看下一个tuple
             if (IDR[IDRIndex][1] >= tuple[tupleIndex][0] and IDR[IDRIndex][1] <= tuple[tupleIndex][1]):
                 appendValue = IDR[IDRIndex][1] - tuple[tupleIndex][0] + sum
-                print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
+                # print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
                 size.append(appendValue)
                 previous = IDR[IDRIndex][1]
                 IDRIndex = IDRIndex + 1
@@ -241,7 +232,7 @@ while(IDRIndex < len(IDR)):
                     appendValue = IDR[IDRIndex][1] - previous
                 else:
                     appendValue = IDR[IDRIndex][1] - tuple[tupleIndex][0] + sum
-                print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
+                # print("currIDR: " + str(IDR[IDRIndex][1]) + " Value: " + str(appendValue))
                 size.append(appendValue)
                 previous = IDR[IDRIndex][1]
                 IDRIndex = IDRIndex + 1
@@ -305,35 +296,13 @@ sample = []
 for a in size2:
     sample.append(a[0])
 
-print('******** (frame number, IDR,size) *******')
-print(size2)
-
-print("***** Candidate IDR frame number*******")
-print(sample)
 
 
-## find the corresponding partition time based on position
+print('Success in get the list: (sample_number, IDR_offset, byte_range)')
+# print(size2)
+print("Total Candidate partition IDR number: ", len(sample))
 
-# dct = dict((x,y) for x,y in offset_time)
-# partition_time = []
-# for i in start_offset:
-#     partition_time.append(dct[i])
 
-# partition_time.append(start_time[-1])
-# print(partition_time)
-
-## video cut
-# cut video
-
-# end_idx=1
-# while end_idx < len(partition_time):
-#     cut_cmd='ffmpeg  -ss {} -i {} -to {} -c:v copy -avoid_negative_ts 1 -loglevel quiet {}/clip_{}.mp4'.format(
-#     partition_time[end_idx-1], input_file, partition_time[end_idx]-partition_time[end_idx-1], 
-#     os.path.join(output_dir, 'clips'), end_idx-1)
-#     end_idx +=1
-#     exit_code = os.system(cut_cmd)
-#     if exit_code != 0:
-#         print('command failed:', cut_cmd)
 
 cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
     input_file, output_dir
@@ -342,8 +311,11 @@ exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
 
-    
+print('Succeed in generating none audio video')   
 
+
+
+###### The following segement by frame ffmpeg command line need postive integer to partition.
 if 0 in sample:
     sample.remove(0)
 
@@ -352,8 +324,6 @@ string = ",".join(str(x) for x in sample)
 cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/%d_clip.mp4"'.format(
     input_file, string, os.path.join(output_dir, 'clips')
 )
-
-print(cut_cmd)
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
