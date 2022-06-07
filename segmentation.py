@@ -159,9 +159,12 @@ print("Succeed in get video offsets tuple")
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
     os.path.join(output_dir, 'IDRinfo.log'), input_file
     )
+    
+
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
-    print('Succeed in getting IDR info')
+    print('Faild in getting IDR info')
+print('Success in getting IDRinfo.log')
 
 IDRInfoPath = os.path.join(output_dir, 'IDRinfo.log')
 
@@ -181,6 +184,7 @@ with open(IDRInfoPath, 'r') as file:
 
 file.close()
 
+print('Success in getting frame, offset of IDR')
 
 
 
@@ -195,6 +199,7 @@ IDR = [] #[frame, offset]
 while i < len(offset):
     temp5 = [frame[i], offset[i]]
     IDR.append(temp5)
+    i+=1
 
 last = IDR[-1][1]
 tupleIndex = 0
@@ -207,6 +212,8 @@ sameTuple = True
 previous = 0
 sum = 0  #累计
 
+print('********** All IDR: [frame, offset] *********')
+print(IDR)
 while(IDRIndex < len(IDR)):
     #不可能的情况：IDR不在video里，直接跳过
     if (IDR[IDRIndex][1] < smallest or last > largest): 
@@ -337,10 +344,10 @@ if exit_code != 0:
 
     
 
-if 0 in frame:
-    frame.remove(0)
+if 0 in sample:
+    sample.remove(0)
 
-string = ",".join(str(x) for x in frame)
+string = ",".join(str(x) for x in sample)
 
 cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/%d_clip.mp4"'.format(
     input_file, string, os.path.join(output_dir, 'clips')
