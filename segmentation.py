@@ -247,6 +247,7 @@ while(IDRIndex < len(IDR)):
                 sameTuple = False
                 tupleIndex = tupleIndex + 1
     else:
+        #There exists some weird IDR frames which is not monotnously increading, so we pop those IDRs which are suddenly decreasing
         IDR.pop(IDRIndex)
 
 while(tupleIndex < len(tuple)):
@@ -269,10 +270,9 @@ while i < len(newIDR):
 
 
 ############################ To Grouping Video and find candidate IDRs #######################################################
-
 # Grouping the videos to approximately 4.5 mb.
 tot_len = 0
-arbitraryNumber = 4500000
+arbitraryNumber = 4500000    #4.5 mb
 i = 0
 
 tempSize = 0
@@ -321,7 +321,7 @@ if 0 in sample:
     sample.remove(0)
 
 string = ",".join(str(x) for x in sample)
-
+#The command line to partition video based on candidate IDRs in sample
 cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/%d_clip.mp4"'.format(
     input_file, string, os.path.join(output_dir, 'clips')
 )
