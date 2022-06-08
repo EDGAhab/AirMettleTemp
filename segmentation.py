@@ -26,11 +26,21 @@ if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
 os.mkdir(os.path.join(output_dir, 'clips'))
+os.mkdir(os.path.join(output_dir, 'other_streams'))
 
 
+cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
+    input_file, output_dir
+)
+exit_code = os.system(cut_cmd)
+if exit_code != 0:
+    print('command failed:', cut_cmd)
 
+print('Succeed in generating none audio video')   
 
-# Read input_file.mp4 to get moov_data, track info
+noAudio =  os.path.join(output_dir, 'noAudio.mp4')
+
+# Read noAudio.mp4 to get moov_data, track info
 atom_name = {
     'ftyp': b'66747970', 
     'moov': b'6d6f6f76', 
@@ -48,7 +58,7 @@ st_name = {
     'tkhd': b'746b6864',
     'mdhd': b'6d646864'}
 
-with open(input_file, 'rb') as f:
+with open(noAudio, 'rb') as f:
     hexdata = binascii.hexlify(f.read())
 
 print('Searching Atoms in input mp4...')
@@ -169,7 +179,7 @@ print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 
 # record the All Frames info, including I, B,P frames ...
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
-    os.path.join(output_dir, 'allFramesInfo.log'), input_file
+    os.path.join(output_dir, 'allFramesInfo.log'), noAudio
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
@@ -322,14 +332,7 @@ print("Total Candidate partition IDR number: ", len(sample))
 
 ############################ To Cut Video #######################################################
 
-cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
-    input_file, output_dir
-)
-exit_code = os.system(cut_cmd)
-if exit_code != 0:
-    print('command failed:', cut_cmd)
 
-print('Succeed in generating none audio video')   
 
 
 
@@ -339,7 +342,7 @@ if 0 in sample:
 
 string = ",".join(str(x) for x in sample)
 #The command line to partition video based on candidate IDRs in sample
-cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/%d_clip.mp4"'.format(
+cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/clip_%d.mp4"'.format(
     input_file, string, os.path.join(output_dir, 'clips')
 )
 exit_code = os.system(cut_cmd)
@@ -347,7 +350,5 @@ if exit_code != 0:
     print('command failed:', cut_cmd)
     
 print('Succeed in partition videos base on IDR')
-
-
 
 
