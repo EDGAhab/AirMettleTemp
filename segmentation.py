@@ -13,8 +13,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
 args = parser.parse_args()
+
+
+
+
 input_file = args.input_file
 input_dir = os.path.dirname(input_file)
+
+output_name = input_file.split('/')[-1].split('.')[0]+'.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
@@ -60,6 +66,17 @@ for i in range(len(atom_exist)):
         atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
         hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
 
+# write all bytes except for data in valid mdat
+with open(os.path.join(output_dir, output_name), 'wb') as f:
+    for i in range(len(atom_exist)):
+        if atom_exist[sort_idx[i]] == 'mdat':
+            f.write(binascii.unhexlify(
+                hexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
+        else:
+            f.write(binascii.unhexlify(
+                hexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
+print('-'*30)
+print('Finish writing mata-data into {}'.format(os.path.join(output_dir, output_name)))
 
 moov_byte_range = byte_range[sort_idx.index(atom_exist.index('moov'))]
 moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
