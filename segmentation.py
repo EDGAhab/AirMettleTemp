@@ -5,6 +5,7 @@ import shutil
 import argparse
 from utils import *
 import numpy as np
+import csv
 
 
 ############################ To get All  Video Trunck info #######################################################
@@ -39,6 +40,7 @@ if exit_code != 0:
 print('Succeed in generating none audio video')   
 
 noAudio =  os.path.join(output_dir, 'noAudio.mp4')
+
 
 # Read noAudio.mp4 to get moov_data, track info
 atom_name = {
@@ -173,9 +175,31 @@ end_arr = np.add(arr1, arr2)
 tuple = np.array((byteOffset,end_arr)).T  # all video trunck -- (byteOffset, byteOffset+byteRange)
 print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 
-
-
 ############################ To get All IDR info #######################################################
+
+cut_cmd = 'ffmpeg -skip_frame nokey -i {} -vf showinfo -vsync 0 -f null - > {} 2>&1'.format(
+    input_file, os.path.join(output_dir, 'IDRinfo.csv')
+    )
+exit_code = os.system(cut_cmd)
+if exit_code == 0:
+    print('Succeed in getting IDR info')
+
+IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
+
+
+start_time = []
+with open(IDRInfoPath, 'r') as file:
+    csvreader = csv.reader(file)
+    for row in csvreader:
+        #print("pts_time" in row[0])
+
+        if "pts_time" in row[0]:
+            result = row[0].split(':')[3].split(' ', 1)[0]
+            start_time.append(float(result))
+            result2 = row[0].split(':')[4]
+        
+
+############################ To get All Frames info #######################################################
 
 # record the All Frames info, including I, B,P frames ...
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
@@ -186,14 +210,15 @@ if exit_code == 0:
     print('Faild in getting Frames info')
 print('Success in getting allFramesInfo.log')
 
-IDRInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
+allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
+
 
 
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
 offset= [] # IDR byteoffset
 frame = [] # IDR Sample number 
 
-with open(IDRInfoPath, 'r') as file:
+with open(allFramesInfoPath, 'r') as file:
     lines = file.read().splitlines()
     for row in lines:
         if "stream 0" in row and "keyframe 1" in row:
@@ -331,7 +356,23 @@ print("Total Candidate partition IDR number: ", len(sample))
 
 
 ############################ To Cut Video #######################################################
+####write sample_number, IDR_offset, byte_range,
+data_rows = []
+inner_row = []
+clip_count = 0
+for ele in size2:
+    inner_row = [clip_count, ele[0], ele[1], ele[3], ele[2]]
+    clip_count += 1
+    data_rows.append(inner_row)
 
+csv_file = os.path.join(output_dir, 'partition_mdat_dstrbt1.csv')
+with open(csv_file, 'w') as f:
+    writer = csv.writer(f)
+    csv_line = '#clip, sample_number, bytes_offset, clip_size, clip_time_range'
+    writer.writerows([csv_line.split(',')])
+    writer.writerows(data_rows)
+
+print("fished partition.csv")
 
 
 
@@ -339,16 +380,18 @@ print("Total Candidate partition IDR number: ", len(sample))
 ###### The following segement by frame ffmpeg command line need postive integer to partition.
 if 0 in sample:
     sample.remove(0)
+if len(sample) == 1 and sample[0] == 0 :
+    print("The partition video is identical to the noAudio.mp4")  
+else:
+    string = ",".join(str(x) for x in sample)
+    #The command line to partition video based on candidate IDRs in sample
+    cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/clip_%d.mp4"'.format(
+        input_file, string, os.path.join(output_dir, 'clips')
+    )
+    exit_code = os.system(cut_cmd)
+    if exit_code != 0:
+        print('command failed:', cut_cmd)
+    print('Succeed in partition videos base on IDR')
 
-string = ",".join(str(x) for x in sample)
-#The command line to partition video based on candidate IDRs in sample
-cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/clip_%d.mp4"'.format(
-    input_file, string, os.path.join(output_dir, 'clips')
-)
-exit_code = os.system(cut_cmd)
-if exit_code != 0:
-    print('command failed:', cut_cmd)
-    
-print('Succeed in partition videos base on IDR')
 
 
