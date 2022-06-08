@@ -1,6 +1,7 @@
 import binascii
 import re
 import os
+import csv
 import shutil
 import argparse
 from utils import *
@@ -13,8 +14,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
 args = parser.parse_args()
-
-
 
 
 input_file = args.input_file
@@ -95,6 +94,8 @@ trak_byte_range, video_trak_idx, audio_trak_idx, audio_name = finding_traks(
 if len(audio_trak_idx) == 0:
     print('There\'s no audio/subtitle stream in this mp4...')
     shutil.rmtree(os.path.join(output_dir, 'other_streams'))
+
+
 
 
 
@@ -189,6 +190,11 @@ print('Success in getting allFramesInfo.log')
 IDRInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 
 
+
+#####假设在这里我拥有一个startTime
+startTime = []
+
+
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
 offset= [] # IDR byteoffset
 frame = [] # IDR Sample number 
@@ -212,9 +218,9 @@ print('Success in getting frame, offset of IDR')
 size = [] # to store the size between IDRs
 smallest = tuple[0][0]
 largest = tuple[-1][1]
-IDR = [] #the IDR list stores [frame, offset]
+IDR = [] #the IDR list stores [frame, offset, startTime]
 while i < len(offset):
-    temp5 = [frame[i], offset[i]]
+    temp5 = [frame[i], offset[i], startTime[i]]
     IDR.append(temp5)
     i+=1
 
@@ -286,13 +292,13 @@ while(tupleIndex < len(tuple)):
 # print("Last Value: " + str(sum)) 
 size.append(sum)
 print("Succeed in getting video size between IDRs ")
-newIDR = [[0,0]] + IDR  #[frame, offset]
-size2 = [] # size2 is the tupple (frame, byte_offset, size)
+newIDR = [[0,0,0]] + IDR  #[frame, offset, startTime]
+size2 = [] # size2 is the tupple (frame, byte_offset, startTime, size)
 i = 0
 while i < len(newIDR):
-    lst = [newIDR[i][0], newIDR[i][1], size[i]]
-    if(lst[1] != 0 and lst[2] != 0 ):
-        size2.append((newIDR[i][0], newIDR[i][1], size[i]))
+    lst = [newIDR[i][0], newIDR[i][1],newIDR[i][2], size[i]]
+    if(lst[1] != 0 and lst[3] != 0 ):
+        size2.append((newIDR[i][0], newIDR[i][1], newIDR[i][2], size[i]))
     i+=1
 
 
@@ -305,11 +311,11 @@ i = 0
 tempSize = 0
 while i < len(size2):
     if(len(size2) != 1):
-        if(size2[i][2] < arbitraryNumber and i != len(size2) - 1):
-            temp = size2[i][2] + size2[i + 1][2]
+        if(size2[i][3] < arbitraryNumber and i != len(size2) - 1):
+            temp = size2[i][3] + size2[i + 1][3]
             diff1 = abs(temp - arbitraryNumber)
-            diff2 = abs(size2[i][2] - arbitraryNumber)
-            if(diff1 <= diff2 or size2[i][2] <= 0.1*arbitraryNumber):
+            diff2 = abs(size2[i][3] - arbitraryNumber)
+            if(diff1 <= diff2 or size2[i][3] <= 0.1*arbitraryNumber):
                 size2[i] = (size2[i][0], size2[i][1], temp)
                 size2.pop(i+1)
             else:
@@ -320,12 +326,13 @@ while i < len(size2):
         i = i + 1
         
 sample = []  # the sample number of candidate IDRs
+finalStartTime = []
 for a in size2:
     sample.append(a[0])
+    finalStartTime.append(a[2])
 
-
-print('Success in get the list: (sample_number, IDR_offset, byte_range)')
-# print(size2)
+print('Success in get the list: (sample_number, IDR_offset, startTime, byte_range)')
+print(size2)
 print("Total Candidate partition IDR number: ", len(sample))
 
 
