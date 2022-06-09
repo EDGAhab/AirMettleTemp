@@ -236,11 +236,10 @@ with open(allFramesInfoPath, 'r') as file:
             frame.append(int(row.split(',')[6].split(' ', 2)[2]))
             offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
 
-
 file.close()
 
-
 print('Success in getting frame, offset of All Frames')
+
 
 
 
