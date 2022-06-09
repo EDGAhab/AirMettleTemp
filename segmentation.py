@@ -233,8 +233,6 @@ allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 offset= [] # IDR byteoffset
 frame = [] # IDR Sample number 
 
-audioSize = [] #[size]
-
 with open(allFramesInfoPath, 'r') as file:
     lines = file.read().splitlines()
     for row in lines:
