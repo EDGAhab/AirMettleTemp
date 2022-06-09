@@ -188,16 +188,31 @@ if exit_code == 0:
 IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
 
 
-start_time = []
-with open(IDRInfoPath, 'r') as file:
+
+#start time和timerange的code
+startTime = []
+range = []
+offset= []
+with open("logfile2.csv", 'r') as file:
     csvreader = csv.reader(file)
     for row in csvreader:
         #print("pts_time" in row[0])
 
         if "pts_time" in row[0]:
             result = row[0].split(':')[3].split(' ', 1)[0]
-            start_time.append(float(result))
+            startTime.append(float(result))
             result2 = row[0].split(':')[4]
+            
+            s = ''.join(x for x in result2 if x.isdigit())
+            offset.append(int(s))
+
+            
+        if "Lsize" in row[0]:
+            result1 = row[0].split('=')[5].split(' ', 1)[0]
+            total = int(result1.split(':')[0])*3600 + int(result1.split(':')[1])*60 + float(result1.split(':')[2])
+            sum = total
+            startTime.append(total)
+file.close()
         
 
 ############################ To get All Frames info #######################################################
@@ -212,12 +227,6 @@ if exit_code == 0:
 print('Success in getting allFramesInfo.log')
 
 allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
-
-
-
-
-#####假设在这里我拥有一个startTime
-startTime = []
 
 
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
@@ -244,6 +253,9 @@ size = [] # to store the size between IDRs
 smallest = tuple[0][0]
 largest = tuple[-1][1]
 IDR = [] #the IDR list stores [frame, offset, startTime]
+print("len(frame)   ", len(frame) )
+print("len(offset)   ", len(offset) )
+print("len(startTime)   ", len(startTime) )
 while i < len(offset):
     temp5 = [frame[i], offset[i], startTime[i]]
     IDR.append(temp5)
@@ -316,8 +328,13 @@ while(tupleIndex < len(tuple)):
     tupleIndex = tupleIndex + 1
 # print("Last Value: " + str(sum)) 
 size.append(sum)
+newIDR = []
 print("Succeed in getting video size between IDRs ")
-newIDR = [[0,0,0]] + IDR  #[frame, offset, startTime]
+if size[0] == 0 :
+    size.pop(0)
+    newIDR=IDR
+else:
+    newIDR = [[0,smallest,0]] + IDR  #[frame, offset, startTime]
 size2 = [] # size2 is the tupple (frame, byte_offset, startTime, size)
 i = 0
 while i < len(newIDR):
@@ -325,6 +342,8 @@ while i < len(newIDR):
     if(lst[1] != 0 and lst[3] != 0 ):
         size2.append((newIDR[i][0], newIDR[i][1], newIDR[i][2], size[i]))
     i+=1
+print("*************** size2 *************")
+print(size2)
 
 
 ############################ To Grouping Video and find candidate IDRs #######################################################
@@ -341,7 +360,7 @@ while i < len(size2):
             diff1 = abs(temp - arbitraryNumber)
             diff2 = abs(size2[i][3] - arbitraryNumber)
             if(diff1 <= diff2 or size2[i][3] <= 0.1*arbitraryNumber):
-                size2[i] = (size2[i][0], size2[i][1], temp)
+                size2[i] = (size2[i][0], size2[i][1], size2[i][2], temp)
                 size2.pop(i+1)
             else:
                 i = i + 1
