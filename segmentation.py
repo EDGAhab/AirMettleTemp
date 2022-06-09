@@ -7,6 +7,7 @@ import argparse
 from utils import *
 import numpy as np
 import csv
+import pandas as pd
 
 
 ############################ To get All  Video Trunck info #######################################################
@@ -94,7 +95,7 @@ moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
 trak_byte_range, video_trak_idx, audio_trak_idx, audio_name = finding_traks(
     moov_data, st_name)
 if len(audio_trak_idx) == 0:
-    print('There\'s no audio/subtitle stream in this mp4...')
+    # print('There\'s no audio/subtitle stream in this mp4...')
     shutil.rmtree(os.path.join(output_dir, 'other_streams'))
 
 
@@ -179,7 +180,7 @@ print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 ############################ To get All IDR info #######################################################
 
 cut_cmd = 'ffmpeg -skip_frame nokey -i {} -vf showinfo -vsync 0 -f null - > {} 2>&1'.format(
-    input_file, os.path.join(output_dir, 'IDRinfo.csv')
+    noAudio, os.path.join(output_dir, 'IDRinfo.csv')
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
@@ -192,8 +193,8 @@ IDRInfoPath = os.path.join(output_dir, 'IDRinfo.csv')
 #start time和timerange的code
 startTime = []
 range = []
-offset= []
-with open("logfile2.csv", 'r') as file:
+IDRoffset= []
+with open(IDRInfoPath, 'r') as file:
     csvreader = csv.reader(file)
     for row in csvreader:
         #print("pts_time" in row[0])
@@ -204,16 +205,11 @@ with open("logfile2.csv", 'r') as file:
             result2 = row[0].split(':')[4]
             
             s = ''.join(x for x in result2 if x.isdigit())
-            offset.append(int(s))
+            IDRoffset.append(int(s))
 
-            
-        if "Lsize" in row[0]:
-            result1 = row[0].split('=')[5].split(' ', 1)[0]
-            total = int(result1.split(':')[0])*3600 + int(result1.split(':')[1])*60 + float(result1.split(':')[2])
-            sum = total
-            startTime.append(total)
 file.close()
         
+print("The total IDR number is : ", len(startTime))
 
 ############################ To get All Frames info #######################################################
 
@@ -230,8 +226,8 @@ allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 
 
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
-offset= [] # IDR byteoffset
-frame = [] # IDR Sample number 
+offset= [] # All frames byteoffset
+frame = [] #  All frames Sample number 
 
 with open(allFramesInfoPath, 'r') as file:
     lines = file.read().splitlines()
@@ -244,25 +240,31 @@ with open(allFramesInfoPath, 'r') as file:
 file.close()
 
 
-
-print('Success in getting frame, offset of IDR')
-
+print('Success in getting frame, offset of All Frames')
 
 
+
+#################### Create IDR tuple (frame, offset, startTime) ##############
+left_df = pd.DataFrame({'start_time': startTime, 
+                       'byteoffset': IDRoffset,
+                      })
+# users
+right_df = pd.DataFrame({'sample_id': frame,
+                        'byteoffset': offset,
+                       })
+
+# joint_table = left_df.merge(right_df, on='byteoffset', how='left')  we can use both left join or inner join
+joint_table = pd.merge(left_df, right_df, on='byteoffset', how='inner')
+IDR = []
+for i in joint_table.index:
+    IDR.append((joint_table['sample_id'].iloc[i], joint_table['byteoffset'].iloc[i], joint_table['start_time'].iloc[i] ))
 
 
 #find the size between IDR frames through the byteoffset information
 size = [] # to store the size between IDRs
 smallest = tuple[0][0]
 largest = tuple[-1][1]
-IDR = [] #the IDR list stores [frame, offset, startTime]
-print("len(frame)   ", len(frame) )
-print("len(offset)   ", len(offset) )
-print("len(startTime)   ", len(startTime) )
-while i < len(offset):
-    temp5 = [frame[i], offset[i], startTime[i]]
-    IDR.append(temp5)
-    i+=1
+
 
 last = IDR[-1][1]
 tupleIndex = 0
@@ -275,7 +277,7 @@ sameTuple = True
 previous = 0
 sum = 0  #cumulated offset
 
-print('Success in getting all IDR: [frame, offset] *********')
+# print('Success in getting all IDR: [frame, offset] *********')
 # print(IDR)
 
 while(IDRIndex < len(IDR)):
@@ -345,8 +347,8 @@ while i < len(newIDR):
     if(lst[1] != 0 and lst[3] != 0 ):
         size2.append((newIDR[i][0], newIDR[i][1], newIDR[i][2], size[i]))
     i+=1
-print("*************** size2 *************")
-print(size2)
+# print("*************** size2 *************")
+# print(size2)
 
 
 ############################ To Grouping Video and find candidate IDRs #######################################################
@@ -379,7 +381,7 @@ for a in size2:
     finalStartTime.append(a[2])
 
 print('Success in get the list: (sample_number, IDR_offset, startTime, byte_range)')
-print(size2)
+# print(size2)
 print("Total Candidate partition IDR number: ", len(sample))
 
 
