@@ -332,6 +332,7 @@ print(sample)
 ## video cut
 # cut video
 
+<<<<<<< Updated upstream
 # end_idx=1
 # while end_idx < len(partition_time):
 #     cut_cmd='ffmpeg  -ss {} -i {} -to {} -c:v copy -avoid_negative_ts 1 -loglevel quiet {}/clip_{}.mp4'.format(
@@ -366,6 +367,79 @@ if exit_code != 0:
     print('command failed:', cut_cmd)
     
 print('Succeed in partition videos base on IDR')
+=======
+#######################write tape###############
+# write csv header
+csv_file = os.path.join(output_dir, 'test_tape.csv')
+with open(csv_file, 'w') as f:
+    writer = csv.writer(f)
+    csv_line = '#chunk, bytes_offset, bytes_size, track_name'
+    ####csv_line = '#chunk, bytes_offset, bytes_size, track_name, #delta_start, #delta_end, timescale, time range(s), tgt_file_name, tgt_bytes_offset, tgt_bytes_size'
+    writer.writerows([csv_line.split(',')])
+# write csv data
+with open(csv_file, 'a') as f:
+    writer = csv.writer(f)
+    video_ptr = 0
+    video_clip = 0
+    audio_ptr = [0 for _ in range(len(audio_trak_idx))]
+    video_start_offset = 48
+    audio_start_offset = [44 for _ in range(len(audio_trak_idx))]
+    global_chunk_num = 0
+    flag = True
+
+    max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
+    max_audio_stco = []
+    for i in range(len(audio_stcz)):
+        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
+    max_stco = max(max_audio_stco+[max_video_stco])+1
+
+    while flag:
+        csv_line = '{}/'.format(global_chunk_num+1)
+        global_chunk_num += 1
+        cuurent_chunk_offset = []
+        for i in range(len(audio_trak_idx)):
+            current_ptr = audio_ptr[i]
+            cuurent_chunk_offset.append(audio_table[i][2][current_ptr][0])
+        cuurent_chunk_offset.append(video_table[2][video_ptr][0])
+        chunk_offset_argsort = argsort(cuurent_chunk_offset)
+        select_trakid = chunk_offset_argsort[0]
+        if select_trakid == len(audio_trak_idx):
+            delta_start = sum(video_stts_flat[:video_stcl[video_ptr][0]])
+            delta_end = sum(video_stts_flat[:video_stcl[video_ptr][-1]+1])
+            #####byteOffset = video_table[2][video_ptr][0] byteRange = video_stcz[video_ptr]
+
+            csv_line += '{}/{}/{}/'.format(
+                video_table[2][video_ptr][0], video_stcz[video_ptr], \
+                'video_{}'.format(video_trak_idx[0])
+            )
+
+
+
+
+            video_ptr += 1
+            if video_ptr == len(video_stcz):
+                video_table[2].append([max_stco])
+
+        else:
+
+            csv_line += '{}/{}/{}/'.format(
+                audio_table[select_trakid][2][audio_ptr[select_trakid]][0], \
+                audio_stcz[select_trakid][audio_ptr[select_trakid]], \
+                '{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid])
+            )
+
+            #audio_start_offset[select_trakid] += audio_stcz[select_trakid][audio_ptr[select_trakid]]
+            audio_ptr[select_trakid] += 1
+            if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
+                audio_table[select_trakid][2].append([max_stco])
+
+        writer.writerows([csv_line.split('/')])
+        if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
+            flag = False
+
+print('Succeed in testing tape #############test tape ########3')
+
+>>>>>>> Stashed changes
 
 
 
