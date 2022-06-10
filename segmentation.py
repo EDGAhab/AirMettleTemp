@@ -37,30 +37,30 @@ exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
 
-print('Succeed in generating none audio video')
+print('Succeed in generating none audio video')   
 
 noAudio =  os.path.join(output_dir, 'noAudio.mp4')
 
 
 # Read noAudio.mp4 to get moov_data, track info
 atom_name = {
-    'ftyp': b'66747970',
-    'moov': b'6d6f6f76',
-    'free': b'66726565',
+    'ftyp': b'66747970', 
+    'moov': b'6d6f6f76', 
+    'free': b'66726565', 
     'mdat': b'6d646174'}
-st_name = {
-    'stsc': b'73747363',
-    'stsz': b'7374737a',
-    'stco': b'7374636f',
-    'stts': b'73747473',
-    'stss': b'73747373',
+st_name = {    
+    'stsc': b'73747363', 
+    'stsz': b'7374737a', 
+    'stco': b'7374636f', 
+    'stts': b'73747473', 
+    'stss': b'73747373', 
     'hdlr': b'68646c72',
     'mvhd': b'6d766864',
     'trak': b'7472616b',
     'tkhd': b'746b6864',
     'mdhd': b'6d646864'}
 
-with open(noAudio, 'rb') as f:
+with open(input_file, 'rb') as f:
     hexdata = binascii.hexlify(f.read())
 
 print('Searching Atoms in input mp4...')
@@ -75,7 +75,7 @@ for i in range(len(atom_exist)):
     else:
         byte_range.append([offsets[sort_idx[i]]-8, offsets[sort_idx[i+1]]-8])
     print('Atom {} byte range: {}-{}, total {} bytes'.format(
-        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2),
+        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
         hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
 
 # write all bytes except for data in valid mdat
@@ -103,7 +103,7 @@ if len(audio_trak_idx) == 0:
 
 
 # To get video trunk byteOffset, byteRange
-
+ 
 if args.save_tape:
 
     audio_table = []
@@ -144,7 +144,7 @@ if args.save_tape:
     max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
     max_audio_stco = []
     for i in range(len(audio_stcz)):
-        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
+        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))   
     max_stco = max(max_audio_stco+[max_video_stco])+1
 
     while flag:
@@ -161,11 +161,11 @@ if args.save_tape:
             video_ptr += 1
             if video_ptr == len(video_stcz):
                 video_table[2].append([max_stco])
-        else :
+        else : 
             audio_ptr[select_trakid] +=1
             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
                     audio_table[select_trakid][2].append([max_stco])
-
+                             
 
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
             flag = False
@@ -180,7 +180,7 @@ print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 ############################ To get All IDR info #######################################################
 
 cut_cmd = 'ffmpeg -skip_frame nokey -i {} -vf showinfo -vsync 0 -f null - > {} 2>&1'.format(
-    noAudio, os.path.join(output_dir, 'IDRinfo.csv')
+    input_file, os.path.join(output_dir, 'IDRinfo.csv')
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
@@ -203,19 +203,19 @@ with open(IDRInfoPath, 'r') as file:
             result = row[0].split(':')[3].split(' ', 1)[0]
             startTime.append(float(result))
             result2 = row[0].split(':')[4]
-
+            
             s = ''.join(x for x in result2 if x.isdigit())
             IDRoffset.append(int(s))
 
 file.close()
-
+        
 print("The total IDR number is : ", len(startTime))
 
 ############################ To get All Frames info #######################################################
 
 # record the All Frames info, including I, B,P frames ...
 cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
-    os.path.join(output_dir, 'allFramesInfo.log'), noAudio
+    os.path.join(output_dir, 'allFramesInfo.log'), input_file
     )
 exit_code = os.system(cut_cmd)
 if exit_code == 0:
@@ -227,7 +227,7 @@ allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
 offset= [] # All frames byteoffset
-frame = [] #  All frames Sample number
+frame = [] #  All frames Sample number 
 
 with open(allFramesInfoPath, 'r') as file:
     lines = file.read().splitlines()
@@ -244,7 +244,7 @@ print('Success in getting frame, offset of All Frames')
 
 
 #################### Create IDR tuple (frame, offset, startTime) ##############
-left_df = pd.DataFrame({'start_time': startTime,
+left_df = pd.DataFrame({'start_time': startTime, 
                        'byteoffset': IDRoffset,
                       })
 # users
@@ -281,10 +281,10 @@ sum = 0  #cumulated offset
 
 while(IDRIndex < len(IDR)):
     #the condition where IDR is not in the video (actually this situation doesn't exists )
-    if (IDR[IDRIndex][1] < smallest or last > largest):
+    if (IDR[IDRIndex][1] < smallest or last > largest): 
         IDRIndex = IDRIndex + 1
     # We only consider that all IDR byteoffset are increasing, otherwise we drop the wired IDR
-    elif(IDR[IDRIndex][1] >= previous):
+    elif(IDR[IDRIndex][1] >= previous): 
         #the condition in the first IDR
         if (firstToken == True):
             #if IDR is inside the tuple, then we calculate offset directly, otherwise we jump to the next tuple
@@ -330,7 +330,7 @@ while(tupleIndex < len(tuple)):
     else:
         sum = sum + tuple[tupleIndex][1] - tuple[tupleIndex][0]
     tupleIndex = tupleIndex + 1
-# print("Last Value: " + str(sum))
+# print("Last Value: " + str(sum)) 
 size.append(sum)
 newIDR = []
 print("Succeed in getting video size between IDRs ")
@@ -372,7 +372,7 @@ while i < len(size2):
             i = i + 1
     else:
         i = i + 1
-
+        
 sample = []  # the sample number of candidate IDRs
 finalStartTime = []
 for a in size2:
@@ -398,7 +398,7 @@ for ele in size2:
 csv_file = os.path.join(output_dir, 'partition_mdat_dstrbt1.csv')
 with open(csv_file, 'w') as f:
     writer = csv.writer(f)
-    csv_line = '#clip, sample_number, bytes_offset, clip_size, clip_time_range'
+    csv_line = '#clip, sample_number, bytes_offset, clip_size, clip_start_time'
     writer.writerows([csv_line.split(',')])
     writer.writerows(data_rows)
 
@@ -410,11 +410,10 @@ print("fished partition.csv")
 ###### The following segement by frame ffmpeg command line need postive integer to partition.
 
 if len(sample) == 1 and sample[0] == 0 :
-    print("The partition video is identical to the noAudio.mp4")
+    print("The partition video is identical to the noAudio.mp4")  
 else:
     if 0 in sample:
         sample.remove(0)
-
     string = ",".join(str(x) for x in sample)
     #The command line to partition video based on candidate IDRs in sample
     cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -an -loglevel quiet "{}/clip_%d.mp4"'.format(
@@ -424,3 +423,6 @@ else:
     if exit_code != 0:
         print('command failed:', cut_cmd)
     print('Succeed in partition videos base on IDR')
+
+
+
