@@ -22,7 +22,10 @@ input_file = args.input_file
 input_dir = os.path.dirname(input_file)
 
 output_name = input_file.split('/')[-1].split('.')[0]+'.meta'
+voutput_name = input_file.split('/')[-1].split('.')[0]+'noAudio.meta'
+aoutput_name = input_file.split('/')[-1].split('.')[0]+'noVideo.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
+audio_output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0] +  '_audio')
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
@@ -33,6 +36,12 @@ os.mkdir(os.path.join(output_dir, 'other_streams'))
 cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
     input_file, output_dir
 )
+
+cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/Audio.mp4"'.format(
+    input_file, output_dir
+)
+
+
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
@@ -60,6 +69,8 @@ st_name = {
     'tkhd': b'746b6864',
     'mdhd': b'6d646864'}
 
+
+############### meta data for video & audio file ###############
 with open(input_file, 'rb') as f:
     hexdata = binascii.hexlify(f.read())
 
@@ -89,6 +100,44 @@ with open(os.path.join(output_dir, output_name), 'wb') as f:
                 hexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
 print('-'*30)
 print('Finish writing mata-data into {}'.format(os.path.join(output_dir, output_name)))
+
+######################## meta data for video only ################################
+
+with open(noAudio, 'rb') as f:
+    vhexdata = binascii.hexlify(f.read())
+
+print('Searching Atoms in input mp4...')
+voffsets, atom_exist = parsing_atoms(vhexdata, atom_name)
+
+# sort atoms and store their bytes range
+sort_idx = argsort([voffsets[i] for i in range(len(voffsets))])
+byte_range = [] # [start_offset, end_offset(not include)]
+for i in range(len(atom_exist)):
+    if i == len(atom_exist)-1:
+        byte_range.append([voffsets[sort_idx[i]]-8, len(vhexdata)])
+    else:
+        byte_range.append([voffsets[sort_idx[i]]-8, voffsets[sort_idx[i+1]]-8])
+    print('Atom {} byte range: {}-{}, total {} bytes'.format(
+        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
+        hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
+
+# write all bytes except for data in valid mdat
+with open(os.path.join(output_dir, voutput_name), 'wb') as f:
+    for i in range(len(atom_exist)):
+        if atom_exist[sort_idx[i]] == 'mdat':
+            f.write(binascii.unhexlify(
+                vhexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
+        else:
+            f.write(binascii.unhexlify(
+                vhexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
+print('-'*30)
+print('Finish writing mata-data into {}'.format(os.path.join(output_dir, voutput_name)))
+
+
+
+
+
+################################# something next ###################################
 
 moov_byte_range = byte_range[sort_idx.index(atom_exist.index('moov'))]
 moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
@@ -281,7 +330,7 @@ i = 0
 while i < len(cutPlan):
     string = ",".join(str(x) for x in cutPlan[i])
     cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}clip_%d.mp4"'.format(
-            input_file, string, os.path.join(output_dir, 'clips'), i
+            input_file, string, os.path.join(audio_output_dir, 'clips'), i
         )
     exit_code = os.system(cut_cmd)
     if exit_code != 0:
@@ -290,15 +339,15 @@ while i < len(cutPlan):
 
     # for the middle
     if (i == 0) :
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(output_dir, 'clips'), i, 1)
+        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'), i, 1)
         cut_cmd_1 = 'rm -f {}'.format(clip_path1)
         exit_code = os.system(cut_cmd_1)
         if exit_code != 0:
             print('command failed:', cut_cmd_1)
 
     elif (i > 0  and i < len(cutPlan)-1 ): 
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(output_dir, 'clips'), i, 0)
-        clip_path2 = "{}/{}clip_{}.mp4".format(os.path.join(output_dir, 'clips'),i, 2)
+        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'), i, 0)
+        clip_path2 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'),i, 2)
         cut_cmd_1 = 'rm -f {}'.format(clip_path1)
         cut_cmd_2 = 'rm -f {}'.format(clip_path2)
         exit_code = os.system(cut_cmd_1)
@@ -308,7 +357,7 @@ while i < len(cutPlan):
         if exit_code != 0:
             print('command failed:', cut_cmd_2)
     else:
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(output_dir, 'clips'),i, 0)
+        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'),i, 0)
         cut_cmd_1 = 'rm -f {}'.format(clip_path1)
         exit_code = os.system(cut_cmd_1)
         if exit_code != 0:
