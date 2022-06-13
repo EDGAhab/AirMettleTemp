@@ -25,15 +25,16 @@ output_name = input_file.split('/')[-1].split('.')[0]+'.meta'
 voutput_name = input_file.split('/')[-1].split('.')[0]+'noAudio.meta'
 aoutput_name = input_file.split('/')[-1].split('.')[0]+'noVideo.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
-audio_output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0] +  '_audio')
+audio_output_dir = os.path.join(output_dir, '_audio')
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
+os.mkdir(audio_output_dir)
 os.mkdir(os.path.join(output_dir, 'clips'))
 os.mkdir(os.path.join(output_dir, 'other_streams'))
 
 
-cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
+cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/noAudio.mp4"'.format(
     input_file, output_dir
 )
 
@@ -46,23 +47,26 @@ exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
 
-print('Succeed in generating none audio video')   
+exit_code = os.system(cut_cmdv)
+if exit_code != 0:
+    print('command failed:', cut_cmdv)
+print('Succeed in generating none audio video')
 
 noAudio =  os.path.join(output_dir, 'noAudio.mp4')
-
+Audio =  os.path.join(output_dir, 'Audio.mp4')
 
 # Read noAudio.mp4 to get moov_data, track info
 atom_name = {
-    'ftyp': b'66747970', 
-    'moov': b'6d6f6f76', 
-    'free': b'66726565', 
+    'ftyp': b'66747970',
+    'moov': b'6d6f6f76',
+    'free': b'66726565',
     'mdat': b'6d646174'}
-st_name = {    
-    'stsc': b'73747363', 
-    'stsz': b'7374737a', 
-    'stco': b'7374636f', 
-    'stts': b'73747473', 
-    'stss': b'73747373', 
+st_name = {
+    'stsc': b'73747363',
+    'stsz': b'7374737a',
+    'stco': b'7374636f',
+    'stts': b'73747473',
+    'stss': b'73747373',
     'hdlr': b'68646c72',
     'mvhd': b'6d766864',
     'trak': b'7472616b',
@@ -86,7 +90,7 @@ for i in range(len(atom_exist)):
     else:
         byte_range.append([offsets[sort_idx[i]]-8, offsets[sort_idx[i+1]]-8])
     print('Atom {} byte range: {}-{}, total {} bytes'.format(
-        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
+        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2),
         hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
 
 # write all bytes except for data in valid mdat
@@ -107,33 +111,63 @@ with open(noAudio, 'rb') as f:
     vhexdata = binascii.hexlify(f.read())
 
 print('Searching Atoms in input mp4...')
-voffsets, atom_exist = parsing_atoms(vhexdata, atom_name)
+voffsets, vatom_exist = parsing_atoms(vhexdata, atom_name)
 
 # sort atoms and store their bytes range
 sort_idx = argsort([voffsets[i] for i in range(len(voffsets))])
-byte_range = [] # [start_offset, end_offset(not include)]
-for i in range(len(atom_exist)):
-    if i == len(atom_exist)-1:
-        byte_range.append([voffsets[sort_idx[i]]-8, len(vhexdata)])
+vbyte_range = [] # [start_offset, end_offset(not include)]
+for i in range(len(vatom_exist)):
+    if i == len(vatom_exist)-1:
+        vbyte_range.append([voffsets[sort_idx[i]]-8, len(vhexdata)])
     else:
-        byte_range.append([voffsets[sort_idx[i]]-8, voffsets[sort_idx[i+1]]-8])
+        vbyte_range.append([voffsets[sort_idx[i]]-8, voffsets[sort_idx[i+1]]-8])
     print('Atom {} byte range: {}-{}, total {} bytes'.format(
-        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2), 
-        hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
+        vatom_exist[sort_idx[i]], int(vbyte_range[i][0]/2), int(vbyte_range[i][1]/2),
+        hex(int(vbyte_range[i][1]/2)-int(vbyte_range[i][0]/2))))
 
 # write all bytes except for data in valid mdat
 with open(os.path.join(output_dir, voutput_name), 'wb') as f:
-    for i in range(len(atom_exist)):
-        if atom_exist[sort_idx[i]] == 'mdat':
+    for i in range(len(vatom_exist)):
+        if vatom_exist[sort_idx[i]] == 'mdat':
             f.write(binascii.unhexlify(
-                vhexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
+                vhexdata[int(vbyte_range[i][0]): int(vbyte_range[i][0]+8*2)]))
         else:
             f.write(binascii.unhexlify(
-                vhexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
+                vhexdata[int(vbyte_range[i][0]): int(vbyte_range[i][1])]))
 print('-'*30)
 print('Finish writing mata-data into {}'.format(os.path.join(output_dir, voutput_name)))
 
+######################## meta data for audio only ################################
 
+with open(Audio, 'rb') as f:
+    ahexdata = binascii.hexlify(f.read())
+
+print('Searching Atoms in input mp4...')
+aoffsets, aatom_exist = parsing_atoms(ahexdata, atom_name)
+
+# sort atoms and store their bytes range
+sort_idx = argsort([aoffsets[i] for i in range(len(aoffsets))])
+abyte_range = [] # [start_offset, end_offset(not include)]
+for i in range(len(aatom_exist)):
+    if i == len(aatom_exist)-1:
+        abyte_range.append([aoffsets[sort_idx[i]]-8, len(ahexdata)])
+    else:
+        abyte_range.append([aoffsets[sort_idx[i]]-8, aoffsets[sort_idx[i+1]]-8])
+    print('Atom {} byte range: {}-{}, total {} bytes'.format(
+        aatom_exist[sort_idx[i]], int(abyte_range[i][0]/2), int(abyte_range[i][1]/2),
+        hex(int(abyte_range[i][1]/2)-int(abyte_range[i][0]/2))))
+
+# write all bytes except for data in valid mdat
+with open(os.path.join(output_dir, aoutput_name), 'wb') as f:
+    for i in range(len(aatom_exist)):
+        if aatom_exist[sort_idx[i]] == 'mdat':
+            f.write(binascii.unhexlify(
+                ahexdata[int(abyte_range[i][0]): int(abyte_range[i][0]+8*2)]))
+        else:
+            f.write(binascii.unhexlify(
+                ahexdata[int(abyte_range[i][0]): int(abyte_range[i][1])]))
+print('-'*30)
+print('Finish writing mata-data into {}'.format(os.path.join(output_dir, aoutput_name)))
 
 
 
@@ -152,7 +186,7 @@ if len(audio_trak_idx) == 0:
 
 
 # To get video trunk byteOffset, byteRange
- 
+
 if args.save_tape:
 
     audio_table = []
@@ -193,7 +227,7 @@ if args.save_tape:
     max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
     max_audio_stco = []
     for i in range(len(audio_stcz)):
-        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))   
+        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
     max_stco = max(max_audio_stco+[max_video_stco])+1
 
     while flag:
@@ -210,11 +244,11 @@ if args.save_tape:
             video_ptr += 1
             if video_ptr == len(video_stcz):
                 video_table[2].append([max_stco])
-        else : 
+        else :
             audio_ptr[select_trakid] +=1
             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
                     audio_table[select_trakid][2].append([max_stco])
-                             
+
 
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
             flag = False
@@ -252,12 +286,12 @@ with open(IDRInfoPath, 'r') as file:
             result = row[0].split(':')[3].split(' ', 1)[0]
             startTime.append(float(result))
             result2 = row[0].split(':')[4]
-            
+
             s = ''.join(x for x in result2 if x.isdigit())
             IDRoffset.append(int(s))
 
 file.close()
-        
+
 print("The total IDR number is : ", len(startTime))
 
 ############################ To get All Frames info #######################################################
@@ -276,10 +310,9 @@ allFramesInfoPath = os.path.join(output_dir, 'allFramesInfo.log')
 
 # To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
 offset= [] # All frames byteoffset
-frame = [] #  All frames Sample number 
+frame = [] #  All frames Sample number
 
 # To get IDR info by reading the log file, that the audio size
-audioSize = [] #[size]
 
 with open(allFramesInfoPath, 'r') as file:
     lines = file.read().splitlines()
@@ -287,22 +320,56 @@ with open(allFramesInfoPath, 'r') as file:
         if "stream 0" in row and "keyframe 1" in row:
             frame.append(int(row.split(',')[6].split(' ', 2)[2]))
             offset.append(int(row.split(',')[7].split(' ', 2)[2], 16))
+
+file.close()
+print('Success in getting frame, offset of All Frames')
+
+############################ To get Audio info #######################################################
+
+# record the All Frames info, including I, B,P frames ...
+cut_cmd = 'FFREPORT=file={}:level=56 ffmpeg -i {}  -f -segment_frames -reset_timestamps 1 -loglevel quiet'.format(
+    os.path.join(output_dir, 'allFramesInfoa.log'), Audio
+    )
+exit_code = os.system(cut_cmd)
+if exit_code == 0:
+    print('Faild in getting Frames info')
+print('Success in getting allFramesInfo.log')
+
+allFramesInfoPatha = os.path.join(output_dir, 'allFramesInfoa.log')
+
+
+# To get IDR info by reading the log file, that the corresponding IDR sample number, IDR byteoffset
+
+# To get IDR info by reading the log file, that the audio size
+audioSize = [] #[size]
+
+with open(allFramesInfoPatha, 'r') as file:
+    lines = file.read().splitlines()
+    for row in lines:
         if "AVIndex stream 0" in row:
             audioSize.append(int(row.split(',')[9].split(' ', 2)[2]))
 
 file.close()
-
 print('Success in getting frame, offset of All Frames')
+
+bigsum = 0
+for i in audioSize:
+    bigsum = bigsum + i
+print(bigsum)
+
+
+
 
 ########### Audio Processing #############################
 
 targetSize = 4500000  #4.5MB
-overlap = 780         #大约五秒？
+overlap = 80000         #大约五秒？
 cutPlan = []
 overall = []
 sum = 0
 start = 0
 i = 0
+
 while(i < len(audioSize)):
     overlap = 80000    #大约五秒？
     sum = sum + audioSize[i]
@@ -320,59 +387,70 @@ while(i < len(audioSize)):
     i = i + 1
 
 
-if(start != len(audioSize) - 1):
-    cutPlan.append([start])
-cutPlan[0] = [cutPlan[0][1]]
-print('##### cut plan ######')
-print(cutPlan)
-#[[0, 5], [4, 9], [8, 13], [12, 17], [16, 18]]
-i = 0
-while i < len(cutPlan):
-    string = ",".join(str(x) for x in cutPlan[i])
-    cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}clip_%d.mp4"'.format(
-            input_file, string, os.path.join(audio_output_dir, 'clips'), i
-        )
+if bigsum <= 4500000:
+    cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/Audio.mp4"'.format(
+        input_file, audio_output_dir
+    )
+
+
     exit_code = os.system(cut_cmd)
     if exit_code != 0:
         print('command failed:', cut_cmd)
-    
-
-    # for the middle
-    if (i == 0) :
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'), i, 1)
-        cut_cmd_1 = 'rm -f {}'.format(clip_path1)
-        exit_code = os.system(cut_cmd_1)
+    print("Audio file less than 4.5 MB. There is no need to cut it")
+else:
+    if(start != len(audioSize) - 1):
+        cutPlan.append([start])
+    cutPlan[0] = [cutPlan[0][1]]
+    print('##### cut plan ######')
+    print(cutPlan)
+    #[[0, 5], [4, 9], [8, 13], [12, 17], [16, 18]]
+    i = 0
+    while i < len(cutPlan):
+        string = ",".join(str(x) for x in cutPlan[i])
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}clip_%d.mp4"'.format(
+                Audio, string, os.path.join(audio_output_dir), i
+            )
+        exit_code = os.system(cut_cmd)
         if exit_code != 0:
-            print('command failed:', cut_cmd_1)
-
-    elif (i > 0  and i < len(cutPlan)-1 ): 
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'), i, 0)
-        clip_path2 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'),i, 2)
-        cut_cmd_1 = 'rm -f {}'.format(clip_path1)
-        cut_cmd_2 = 'rm -f {}'.format(clip_path2)
-        exit_code = os.system(cut_cmd_1)
-        if exit_code != 0:
-            print('command failed:', cut_cmd_1)
-        exit_code = os.system(cut_cmd_2)
-        if exit_code != 0:
-            print('command failed:', cut_cmd_2)
-    else:
-        clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir, 'clips'),i, 0)
-        cut_cmd_1 = 'rm -f {}'.format(clip_path1)
-        exit_code = os.system(cut_cmd_1)
-        if exit_code != 0:
-            print('command failed:', cut_cmd_1)
+            print('command failed:', cut_cmd)
 
 
-    i += 1
+        # for the middle
+        if (i == 0) :
+            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+            cut_cmd_1 = 'rm -f {}'.format(clip_path1)
+            exit_code = os.system(cut_cmd_1)
+            if exit_code != 0:
+                print('command failed:', cut_cmd_1)
 
-print('Succeed in partition videos base on IDR')
+        elif (i > 0  and i < len(cutPlan)-1 ):
+            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+            clip_path2 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
+            cut_cmd_1 = 'rm -f {}'.format(clip_path1)
+            cut_cmd_2 = 'rm -f {}'.format(clip_path2)
+            exit_code = os.system(cut_cmd_1)
+            if exit_code != 0:
+                print('command failed:', cut_cmd_1)
+            exit_code = os.system(cut_cmd_2)
+            if exit_code != 0:
+                print('command failed:', cut_cmd_2)
+        else:
+            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
+            cut_cmd_1 = 'rm -f {}'.format(clip_path1)
+            exit_code = os.system(cut_cmd_1)
+            if exit_code != 0:
+                print('command failed:', cut_cmd_1)
+
+
+        i += 1
+
+    print('Succeed in partition videos base on IDR')
 
 
 
 
 #################### Create IDR tuple (frame, offset, startTime) ##############
-left_df = pd.DataFrame({'start_time': startTime, 
+left_df = pd.DataFrame({'start_time': startTime,
                        'byteoffset': IDRoffset,
                       })
 # users
@@ -409,10 +487,10 @@ sum = 0  #cumulated offset
 
 while(IDRIndex < len(IDR)):
     #the condition where IDR is not in the video (actually this situation doesn't exists )
-    if (IDR[IDRIndex][1] < smallest or last > largest): 
+    if (IDR[IDRIndex][1] < smallest or last > largest):
         IDRIndex = IDRIndex + 1
     # We only consider that all IDR byteoffset are increasing, otherwise we drop the wired IDR
-    elif(IDR[IDRIndex][1] >= previous): 
+    elif(IDR[IDRIndex][1] >= previous):
         #the condition in the first IDR
         if (firstToken == True):
             #if IDR is inside the tuple, then we calculate offset directly, otherwise we jump to the next tuple
@@ -458,7 +536,7 @@ while(tupleIndex < len(tuple)):
     else:
         sum = sum + tuple[tupleIndex][1] - tuple[tupleIndex][0]
     tupleIndex = tupleIndex + 1
-# print("Last Value: " + str(sum)) 
+# print("Last Value: " + str(sum))
 size.append(sum)
 newIDR = []
 print("Succeed in getting video size between IDRs ")
@@ -500,7 +578,7 @@ while i < len(size2):
             i = i + 1
     else:
         i = i + 1
-        
+
 sample = []  # the sample number of candidate IDRs
 finalStartTime = []
 for a in size2:
@@ -546,17 +624,14 @@ with open(csv_file, 'a') as f:
     writer = csv.writer(f)
     video_ptr = 0
     video_clip = 0
-    print(len(audio_trak_idx))
 
     audio_ptr = [0]   ####要改回来
     video_start_offset = 48
-    print(len(audio_trak_idx))
     audio_start_offset = [44] #####改[44 for _ in range(len(audio_trak_idx))]
 
     global_chunk_num = 0
     flag = True
     inner_lst = []
-    print(video_stcz)
     i=0
     while i < len(video_stcz):
         inner_lst.append(video_table[2][i][0])
@@ -645,7 +720,7 @@ print('Succeed in testing tape #############test tape ########3')
 ###### The following segement by frame ffmpeg command line need postive integer to partition.
 
 if len(sample) == 1 and sample[0] == 0 :
-    print("The partition video is identical to the noAudio.mp4")  
+    print("The partition video is identical to the noAudio.mp4")
 else:
     if 0 in sample:
         sample.remove(0)
@@ -658,7 +733,3 @@ else:
     if exit_code != 0:
         print('command failed:', cut_cmd)
     print('Succeed in partition videos base on IDR')
-    
-
-
-
