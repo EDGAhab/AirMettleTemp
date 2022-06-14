@@ -74,36 +74,6 @@ st_name = {
     'mdhd': b'6d646864'}
 
 
-############### meta data for video & audio file ###############
-with open(input_file, 'rb') as f:
-    hexdata = binascii.hexlify(f.read())
-
-print('Searching Atoms in input mp4...')
-offsets, atom_exist = parsing_atoms(hexdata, atom_name)
-
-# sort atoms and store their bytes range
-sort_idx = argsort([offsets[i] for i in range(len(offsets))])
-byte_range = [] # [start_offset, end_offset(not include)]
-for i in range(len(atom_exist)):
-    if i == len(atom_exist)-1:
-        byte_range.append([offsets[sort_idx[i]]-8, len(hexdata)])
-    else:
-        byte_range.append([offsets[sort_idx[i]]-8, offsets[sort_idx[i+1]]-8])
-    print('Atom {} byte range: {}-{}, total {} bytes'.format(
-        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2),
-        hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
-
-# write all bytes except for data in valid mdat
-with open(os.path.join(output_dir, output_name), 'wb') as f:
-    for i in range(len(atom_exist)):
-        if atom_exist[sort_idx[i]] == 'mdat':
-            f.write(binascii.unhexlify(
-                hexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
-        else:
-            f.write(binascii.unhexlify(
-                hexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
-print('-'*30)
-print('Finish writing mata-data into {}'.format(os.path.join(output_dir, output_name)))
 
 ######################## meta data for video only ################################
 
@@ -170,7 +140,36 @@ print('-'*30)
 print('Finish writing mata-data into {}'.format(os.path.join(output_dir, aoutput_name)))
 
 
+############### meta data for video & audio file ###############
+with open(input_file, 'rb') as f:
+    hexdata = binascii.hexlify(f.read())
 
+print('Searching Atoms in input mp4...')
+offsets, atom_exist = parsing_atoms(hexdata, atom_name)
+
+# sort atoms and store their bytes range
+sort_idx = argsort([offsets[i] for i in range(len(offsets))])
+byte_range = [] # [start_offset, end_offset(not include)]
+for i in range(len(atom_exist)):
+    if i == len(atom_exist)-1:
+        byte_range.append([offsets[sort_idx[i]]-8, len(hexdata)])
+    else:
+        byte_range.append([offsets[sort_idx[i]]-8, offsets[sort_idx[i+1]]-8])
+    print('Atom {} byte range: {}-{}, total {} bytes'.format(
+        atom_exist[sort_idx[i]], int(byte_range[i][0]/2), int(byte_range[i][1]/2),
+        hex(int(byte_range[i][1]/2)-int(byte_range[i][0]/2))))
+
+# write all bytes except for data in valid mdat
+with open(os.path.join(output_dir, output_name), 'wb') as f:
+    for i in range(len(atom_exist)):
+        if atom_exist[sort_idx[i]] == 'mdat':
+            f.write(binascii.unhexlify(
+                hexdata[int(byte_range[i][0]): int(byte_range[i][0]+8*2)]))
+        else:
+            f.write(binascii.unhexlify(
+                hexdata[int(byte_range[i][0]): int(byte_range[i][1])]))
+print('-'*30)
+print('Finish writing mata-data into {}'.format(os.path.join(output_dir, output_name)))
 ################################# something next ###################################
 
 moov_byte_range = byte_range[sort_idx.index(atom_exist.index('moov'))]
@@ -223,6 +222,7 @@ if args.save_tape:
     flag = True
     byteOffset = []
     byteRange = []
+    trackName = []
 
     max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
     max_audio_stco = []
@@ -241,13 +241,21 @@ if args.save_tape:
         if select_trakid == len(audio_trak_idx):
             byteOffset.append(video_table[2][video_ptr][0])
             byteRange.append(video_stcz[video_ptr])
+            print('video format')
+
+            trackName.append('video_{}'.format(video_trak_idx[0]))
+            print('video_{}'.format(video_trak_idx[0]))
             video_ptr += 1
             if video_ptr == len(video_stcz):
                 video_table[2].append([max_stco])
         else :
+            trackName.append('{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid]))
             audio_ptr[select_trakid] +=1
+
             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
-                    audio_table[select_trakid][2].append([max_stco])
+
+
+                audio_table[select_trakid][2].append([max_stco])
 
 
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
@@ -256,9 +264,31 @@ if args.save_tape:
 arr1 = np.array(byteOffset)
 arr2 = np.array(byteRange)
 end_arr = np.add(arr1, arr2)
+print('########print byteOffset')
+print(byteOffset)
 
 tuple = np.array((byteOffset,end_arr)).T  # all video trunck -- (byteOffset, byteOffset+byteRange)
 print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
+
+########添加online editor code 生成csv################3
+import csv
+chunk = [1,2,3,4,5]
+byte_offset = [26235, 279701, 287502, 388389, 396191]
+byte_size = [253466, 7801, 100887, 7802, 199587]
+track_name = ['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
+target = ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
+
+file = open("columns.csv", "w")
+writer = csv.writer(file)
+csv_line = 'chunk, byte_offset, byte_size, track_name, target'
+writer.writerows([csv_line.split(',')])
+
+for w in range(len(chunk)):
+
+    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], target[w]])
+
+file.close()
+###############################################################
 
 ############################ To get All IDR info #######################################################
 
@@ -448,7 +478,6 @@ else:
 
 
 
-
 #################### Create IDR tuple (frame, offset, startTime) ##############
 left_df = pd.DataFrame({'start_time': startTime,
                        'byteoffset': IDRoffset,
@@ -554,6 +583,12 @@ while i < len(newIDR):
     i+=1
 # print("*************** size2 *************")
 # print(size2)
+print('######size2 byteoffset')
+output = []
+for i in size2:
+    output.append(i[1])
+
+print(output)
 
 
 ############################ To Grouping Video and find candidate IDRs #######################################################
