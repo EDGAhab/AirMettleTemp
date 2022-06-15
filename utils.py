@@ -366,16 +366,16 @@ def get_sample_table(trak_data, st_name):
         match = re.finditer(st_name[table_list[i]], trak_data)
         first_match_pos = [m.start() for m in match if m.start() % 2 == 0][0]
         who_is_first.append({ "name" : table_list[i], "pos" : first_match_pos})
-    print("##################### who_is_first ########################")
-    print(who_is_first)
+    # print("##################### who_is_first ########################")
+    # print(who_is_first)
     sorted_dic = sorted(who_is_first, key = lambda i: i['pos'])
-    print("##################### sorted_dic ########################")
-    print(sorted_dic)
+    # print("##################### sorted_dic ########################")
+    # print(sorted_dic)
     # order_dic tells the ranking of the elements based on who occurs first.Element with 0 occurs first, then 1, then 2
     order_dic = {'stsc': -1, 'stsz': -1, 'stco': -1, 'stts': -1, 'stss': -1}
     for i in range(len(sorted_dic)):
         order_dic[sorted_dic[i]['name']] = i
-    print("order dic:", order_dic)
+    # print("order dic:", order_dic)
     
     #store the corresponding trak data for each element in order dic
     corresponding_track = []

@@ -24,7 +24,7 @@ output_name = input_file.split('/')[-1].split('.')[0]+'.meta'
 voutput_name = input_file.split('/')[-1].split('.')[0]+'noAudio.meta'
 aoutput_name = input_file.split('/')[-1].split('.')[0]+'noVideo.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
-audio_output_dir = os.path.join(output_dir, '_audio')
+audio_output_dir = os.path.join(output_dir, 'audio')
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
@@ -219,9 +219,13 @@ if args.save_tape:
     video_clip = 0
     audio_ptr = [0 for _ in range(len(audio_trak_idx))]
     flag = True
-    byteOffset = []
-    byteRange = []
-    trackName = []
+    byteOffset = [] #only for video 
+    byteRange = []  #only for video
+    trackName = []  # for all video and audio
+    AudioSize2 = [] # only for audio 
+    combineByteOffset = [] # for all video and audio
+    combineSize = []
+    global_trunck_num = []
 
     max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
     max_audio_stco = []
@@ -229,6 +233,7 @@ if args.save_tape:
         max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
     max_stco = max(max_audio_stco+[max_video_stco])+1
 
+    j = 0
     while flag:
         cuurent_chunk_offset = []
         for i in range(len(audio_trak_idx)):
@@ -237,21 +242,26 @@ if args.save_tape:
         cuurent_chunk_offset.append(video_table[2][video_ptr][0])
         chunk_offset_argsort = argsort(cuurent_chunk_offset)
         select_trakid = chunk_offset_argsort[0]
+        j += 1
+        global_trunck_num.append(j)
         if select_trakid == len(audio_trak_idx):
+            combineByteOffset.append(video_table[2][video_ptr][0])
+            combineSize.append(video_stcz[video_ptr])
             byteOffset.append(video_table[2][video_ptr][0])
             byteRange.append(video_stcz[video_ptr])
-            print('video format')
+            # print('video format')
 
             trackName.append('video_{}'.format(video_trak_idx[0]))
-            print('video_{}'.format(video_trak_idx[0]))
+            # print('video_{}'.format(video_trak_idx[0]))
             video_ptr += 1
             if video_ptr == len(video_stcz):
                 video_table[2].append([max_stco])
         else :
-
+            combineByteOffset.append(audio_table[select_trakid][2][audio_ptr[select_trakid]][0])
+            combineSize.append(audio_stcz[select_trakid][audio_ptr[select_trakid]])
             trackName.append('{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid]))
 
-            AudioSize2 = audio_stcz[select_trakid][audio_ptr[select_trakid]]
+            AudioSize2.append(audio_stcz[select_trakid][audio_ptr[select_trakid]])
 
             audio_ptr[select_trakid] +=1
 
@@ -267,30 +277,13 @@ if args.save_tape:
 arr1 = np.array(byteOffset)
 arr2 = np.array(byteRange)
 end_arr = np.add(arr1, arr2)
-print('########print byteOffset')
-print(byteOffset)
+# print('########print byteOffset')
+# print(byteOffset)
 
 tuple = np.array((byteOffset,end_arr)).T  # all video trunck -- (byteOffset, byteOffset+byteRange)
 print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 
-########添加online editor code 生成csv################3
-import csv
-chunk = [1,2,3,4,5]
-byte_offset = [26235, 279701, 287502, 388389, 396191]
-byte_size = [253466, 7801, 100887, 7802, 199587]
-track_name = ['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
-target = ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
 
-file = open("columns.csv", "w")
-writer = csv.writer(file)
-csv_line = 'chunk, byte_offset, byte_size, track_name, target'
-writer.writerows([csv_line.split(',')])
-
-for w in range(len(chunk)):
-
-    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], target[w]])
-
-file.close()
 ###############################################################
 
 ############################ To get All IDR info #######################################################
@@ -388,7 +381,7 @@ print('Success in getting frame, offset of All Frames')
 bigsum = 0
 for i in audioSize:
     bigsum = bigsum + i
-print(bigsum)
+# print(bigsum)
 
 
 
@@ -419,13 +412,13 @@ while(i < len(audioSize)):
             tempStr = 1
             if(AudioIndex == 0):
                 tempStr = 0
-            AudioTarget.append(str(AudioIndex)+ "clip_" + str(tempStr) + ".mp4")
+            AudioTarget.append(str(AudioIndex)+ "audio_" + str(tempStr) + ".mp4")
             if(tempSum >= sum):
                 remaining = tempSum - sum - tempMinus
                 if(remaining > 0):
                     lastIndex = len(AudioTarget) - 1
                     temp = AudioTarget[lastIndex]
-                    AudioTarget[lastIndex] = temp + ", "+ str(AudioIndex + 1)+ "clip_1.mp4"
+                    AudioTarget[lastIndex] = temp + ", "+ str(AudioIndex + 1)+ "audio_1.mp4"
         AudioIndex = AudioIndex + 1
 
 
@@ -446,15 +439,15 @@ if(sum > 0 and len(AudioSize2) > 0):
         tempStr = 1
         if(AudioIndex == 0):
             tempStr = 0
-        AudioTarget.append(str(AudioIndex)+ "clip_" + str(tempStr) + ".mp4")
+        AudioTarget.append(str(AudioIndex)+ "audio_" + str(tempStr) + ".mp4")
         i = i + 1
 
-print(AudioTarget)  ###csv的audio
+# print(AudioTarget)  ###csv的audio
 #############################################################################################
 
 
 if bigsum <= 4500000:
-    cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/Audio.mp4"'.format(
+    cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
 
@@ -467,13 +460,13 @@ else:
     if(start != len(audioSize) - 1):
         cutPlan.append([start])
     cutPlan[0] = [cutPlan[0][1]]
-    print('##### cut plan ######')
-    print(cutPlan)
+    # print('##### cut plan ######')
+    # print(cutPlan)
     #[[0, 5], [4, 9], [8, 13], [12, 17], [16, 18]]
     i = 0
     while i < len(cutPlan):
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}clip_%d.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}audio_%d.mp4"'.format(
                 Audio, string, os.path.join(audio_output_dir), i
             )
         exit_code = os.system(cut_cmd)
@@ -483,15 +476,15 @@ else:
 
         # for the middle
         if (i == 0) :
-            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
             cut_cmd_1 = 'rm -f {}'.format(clip_path1)
             exit_code = os.system(cut_cmd_1)
             if exit_code != 0:
                 print('command failed:', cut_cmd_1)
 
         elif (i > 0  and i < len(cutPlan)-1 ):
-            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
-            clip_path2 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
             cut_cmd_1 = 'rm -f {}'.format(clip_path1)
             cut_cmd_2 = 'rm -f {}'.format(clip_path2)
             exit_code = os.system(cut_cmd_1)
@@ -501,7 +494,7 @@ else:
             if exit_code != 0:
                 print('command failed:', cut_cmd_2)
         else:
-            clip_path1 = "{}/{}clip_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
             cut_cmd_1 = 'rm -f {}'.format(clip_path1)
             exit_code = os.system(cut_cmd_1)
             if exit_code != 0:
@@ -619,12 +612,12 @@ while i < len(newIDR):
     i+=1
 # print("*************** size2 *************")
 # print(size2)
-print('######size2 byteoffset')
+# print('######size2 byteoffset')
 output = []
 for i in size2:
     output.append(i[1])
 
-print(output)
+# print(output)
 
 
 
@@ -668,8 +661,8 @@ print("Total Candidate partition IDR number: ", len(sample))
 ###########################################################################################
 if(videoIDR[0] == byteOffset[0]):
     videoIDR.pop(0)
-print(videoIDR)
-print(byteOffset)
+# print(videoIDR)
+# print(byteOffset)
 chunk = []
 num = 1
 target = []
@@ -694,7 +687,7 @@ while offsetIndex < len(byteOffset):
             offsetIndex = offsetIndex + 1
     num = num + 1
 
-print(target)  #####csv的video
+# print(target)  #####csv的video
 
 
 
@@ -717,110 +710,110 @@ with open(csv_file, 'w') as f:
 
 print("fished partition.csv")
 
-print('########test tape##########3')
+# print('########test tape##########3')
 #######################write tape###############
 # write csv header
-csv_file = os.path.join(output_dir, 'test_tape.csv')
-with open(csv_file, 'w') as f:
-    writer = csv.writer(f)
-    csv_line = '#chunk, bytes_offset, bytes_size, track_name'
-    ####csv_line = '#chunk, bytes_offset, bytes_size, track_name, #delta_start, #delta_end, timescale, time range(s), tgt_file_name, tgt_bytes_offset, tgt_bytes_size'
-    writer.writerows([csv_line.split(',')])
-# write csv data
-with open(csv_file, 'a') as f:
-    writer = csv.writer(f)
-    video_ptr = 0
-    video_clip = 0
+# csv_file = os.path.join(output_dir, 'test_tape.csv')
+# with open(csv_file, 'w') as f:
+#     writer = csv.writer(f)
+#     csv_line = '#chunk, bytes_offset, bytes_size, track_name'
+#     ####csv_line = '#chunk, bytes_offset, bytes_size, track_name, #delta_start, #delta_end, timescale, time range(s), tgt_file_name, tgt_bytes_offset, tgt_bytes_size'
+#     writer.writerows([csv_line.split(',')])
+# # write csv data
+# with open(csv_file, 'a') as f:
+#     writer = csv.writer(f)
+#     video_ptr = 0
+#     video_clip = 0
 
-    audio_ptr = [0]   ####要改回来
-    video_start_offset = 48
-    audio_start_offset = [44] #####改[44 for _ in range(len(audio_trak_idx))]
+#     audio_ptr = [0]   ####要改回来
+#     video_start_offset = 48
+#     audio_start_offset = [44] #####改[44 for _ in range(len(audio_trak_idx))]
 
-    global_chunk_num = 0
-    flag = True
-    inner_lst = []
-    i=0
-    while i < len(video_stcz):
-        inner_lst.append(video_table[2][i][0])
-        i += 1
-    max_video_stco = max(inner_lst)
-
-
-    # for i in range(len(video_stcz)):
-    #     inner_lst.append(video_table[2][i][0])
-    # max_video_stco = max(inner_lst)
+#     global_chunk_num = 0
+#     flag = True
+#     inner_lst = []
+#     i=0
+#     while i < len(video_stcz):
+#         inner_lst.append(video_table[2][i][0])
+#         i += 1
+#     max_video_stco = max(inner_lst)
 
 
-    #max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
-
-    max_audio_stco = []
-    tempAudio = []
-    idx = 0
-    while idx < len(audio_stcz):
-        jdx = 0
-        while jdx < len(audio_stcz[idx]):
-            tempAudio.append(audio_table[idx][2][jdx][0])
-            jdx = jdx + 1
-        max_audio_stco.append(max(tempAudio))
-        tempAudio = []
-        idx = idx + 1
-
-    # for i in range(len(audio_stcz)):
-    #     max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
-    max_stco = max(max_audio_stco+[max_video_stco])+1
-
-    while flag:
-        csv_line = '{}/'.format(global_chunk_num+1)
-        global_chunk_num += 1
-        cuurent_chunk_offset = []
-
-        idx = 0
-        while(idx < len(audio_trak_idx)):
-            current_ptr = audio_ptr[idx]
-            cuurent_chunk_offset.append(audio_table[idx][2][current_ptr][0])
-            idx = idx + 1
-        # for i in range(len(audio_trak_idx)):
-        #     current_ptr = audio_ptr[i]
-        #     cuurent_chunk_offset.append(audio_table[i][2][current_ptr][0])
-
-        cuurent_chunk_offset.append(video_table[2][video_ptr][0])
-        chunk_offset_argsort = argsort(cuurent_chunk_offset)
-        select_trakid = chunk_offset_argsort[0]
-        if select_trakid == len(audio_trak_idx):
-            #delta_start = sum(video_stts_flat[:video_stcl[video_ptr][0]])
-            #delta_end = sum(video_stts_flat[:video_stcl[video_ptr][-1]+1])
-            #####byteOffset = video_table[2][video_ptr][0] byteRange = video_stcz[video_ptr]
-
-            csv_line += '{}/{}/{}/'.format(
-                video_table[2][video_ptr][0], video_stcz[video_ptr], \
-                'video_{}'.format(video_trak_idx[0])
-            )
+#     # for i in range(len(video_stcz)):
+#     #     inner_lst.append(video_table[2][i][0])
+#     # max_video_stco = max(inner_lst)
 
 
+#     #max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
+
+#     max_audio_stco = []
+#     tempAudio = []
+#     idx = 0
+#     while idx < len(audio_stcz):
+#         jdx = 0
+#         while jdx < len(audio_stcz[idx]):
+#             tempAudio.append(audio_table[idx][2][jdx][0])
+#             jdx = jdx + 1
+#         max_audio_stco.append(max(tempAudio))
+#         tempAudio = []
+#         idx = idx + 1
+
+#     # for i in range(len(audio_stcz)):
+#     #     max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
+#     max_stco = max(max_audio_stco+[max_video_stco])+1
+
+#     while flag:
+#         csv_line = '{}/'.format(global_chunk_num+1)
+#         global_chunk_num += 1
+#         cuurent_chunk_offset = []
+
+#         idx = 0
+#         while(idx < len(audio_trak_idx)):
+#             current_ptr = audio_ptr[idx]
+#             cuurent_chunk_offset.append(audio_table[idx][2][current_ptr][0])
+#             idx = idx + 1
+#         # for i in range(len(audio_trak_idx)):
+#         #     current_ptr = audio_ptr[i]
+#         #     cuurent_chunk_offset.append(audio_table[i][2][current_ptr][0])
+
+#         cuurent_chunk_offset.append(video_table[2][video_ptr][0])
+#         chunk_offset_argsort = argsort(cuurent_chunk_offset)
+#         select_trakid = chunk_offset_argsort[0]
+#         if select_trakid == len(audio_trak_idx):
+#             #delta_start = sum(video_stts_flat[:video_stcl[video_ptr][0]])
+#             #delta_end = sum(video_stts_flat[:video_stcl[video_ptr][-1]+1])
+#             #####byteOffset = video_table[2][video_ptr][0] byteRange = video_stcz[video_ptr]
+
+#             csv_line += '{}/{}/{}/'.format(
+#                 video_table[2][video_ptr][0], video_stcz[video_ptr], \
+#                 'video_{}'.format(video_trak_idx[0])
+#             )
 
 
-            video_ptr += 1
-            if video_ptr == len(video_stcz):
-                video_table[2].append([max_stco])
 
-        else:
 
-            csv_line += '{}/{}/{}/'.format(
-                audio_table[select_trakid][2][audio_ptr[select_trakid]][0], \
-                audio_stcz[select_trakid][audio_ptr[select_trakid]], \
-                '{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid])
-            )
+#             video_ptr += 1
+#             if video_ptr == len(video_stcz):
+#                 video_table[2].append([max_stco])
 
-            #audio_start_offset[select_trakid] += audio_stcz[select_trakid][audio_ptr[select_trakid]]
-            audio_ptr[select_trakid] += 1
-            if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
-                audio_table[select_trakid][2].append([max_stco])
+#         else:
 
-        writer.writerows([csv_line.split('/')])
-        if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
-            flag = False
+#             csv_line += '{}/{}/{}/'.format(
+#                 audio_table[select_trakid][2][audio_ptr[select_trakid]][0], \
+#                 audio_stcz[select_trakid][audio_ptr[select_trakid]], \
+#                 '{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid])
+#             )
 
-print('Succeed in testing tape #############test tape ########3')
+#             #audio_start_offset[select_trakid] += audio_stcz[select_trakid][audio_ptr[select_trakid]]
+#             audio_ptr[select_trakid] += 1
+#             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
+#                 audio_table[select_trakid][2].append([max_stco])
+
+#         writer.writerows([csv_line.split('/')])
+#         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
+#             flag = False
+
+# print('Succeed in testing tape #############test tape ########3')
 
 
 
@@ -840,3 +833,46 @@ else:
     if exit_code != 0:
         print('command failed:', cut_cmd)
     print('Succeed in partition videos base on IDR')
+
+
+
+
+
+
+########添加online editor code 生成csv################3
+import csv
+chunk = global_trunck_num
+byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
+byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
+track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
+allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
+all = 0
+vid = 0
+aud = 0
+# print("all target name num: ", len(track_name))
+# print("all audio trunck: ", len(AudioTarget))
+# print("all video trunck num: ", len(target))
+while all < len(track_name):
+    if "video" in track_name[all]:
+        allTarget.append(target[vid])
+        vid +=1
+    else: 
+        allTarget.append(AudioTarget[aud])
+        aud +=1 
+        
+    all+=1
+
+
+csv_name = os.path.join(output_dir, "columns.csv")
+file = open(csv_name, "w")
+writer = csv.writer(file)
+csv_line = 'chunk, byte_offset, byte_size, track_name, target'
+writer.writerows([csv_line.split(',')])
+
+w = 0
+while w < len(chunk):
+    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
+    w+=1
+
+file.close()
+
