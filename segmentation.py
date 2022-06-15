@@ -248,7 +248,11 @@ if args.save_tape:
             if video_ptr == len(video_stcz):
                 video_table[2].append([max_stco])
         else :
+
             trackName.append('{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid]))
+
+            AudioSize2 = audio_stcz[select_trakid][audio_ptr[select_trakid]]
+
             audio_ptr[select_trakid] +=1
 
             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
@@ -390,8 +394,8 @@ print(bigsum)
 
 
 ########### Audio Processing #############################
-AudioSize2 = []  ###假设我已经有了
-AudioTarget = [] ###输出分类
+# AudioSize2 = []  ###假设我已经有了  I will get the size
+AudioTarget = [] ###输出分类// for reconstruction audio "0clip_0.mp4"
 AudioIndex = 0
 
 targetSize = 4500000  #4.5MB
@@ -403,7 +407,7 @@ start = 0
 i = 0
 remaining = 0
 while(i < len(audioSize)):
-    overlap = 800    #大约五秒？
+    overlap = 80000     #大约五秒？
     sum = sum + audioSize[i]
     if (sum >= targetSize):
         tempMinus = 0
@@ -423,7 +427,7 @@ while(i < len(audioSize)):
                     temp = AudioTarget[lastIndex]
                     AudioTarget[lastIndex] = temp + ", "+ str(AudioIndex + 1)+ "clip_1.mp4"
         AudioIndex = AudioIndex + 1
-        
+
 
         overall.append(sum)
         cutPlan.append([start, i+1])
@@ -506,7 +510,7 @@ else:
 
         i += 1
 
-    print('Succeed in partition videos base on IDR')
+    print('Succeed in partition audio around 4.5 mb')
 
 
 
