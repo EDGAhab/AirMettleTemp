@@ -6,7 +6,6 @@ import shutil
 import argparse
 from utils import *
 import numpy as np
-import csv
 import pandas as pd
 
 
@@ -391,6 +390,9 @@ print(bigsum)
 
 
 ########### Audio Processing #############################
+AudioSize2 = []  ###假设我已经有了
+AudioTarget = [] ###输出分类
+AudioIndex = 0
 
 targetSize = 4500000  #4.5MB
 overlap = 80000         #大约五秒？
@@ -399,11 +401,30 @@ overall = []
 sum = 0
 start = 0
 i = 0
-
+remaining = 0
 while(i < len(audioSize)):
-    overlap = 80000    #大约五秒？
+    overlap = 800    #大约五秒？
     sum = sum + audioSize[i]
     if (sum >= targetSize):
+        tempMinus = 0
+        if (AudioIndex != 0):
+            tempMinus = overlap
+        tempSum = remaining
+        while (tempSum < sum and len(AudioSize2) > 0):
+            tempSum = tempSum + AudioSize2.pop(0)
+            tempStr = 1
+            if(AudioIndex == 0):
+                tempStr = 0
+            AudioTarget.append(str(AudioIndex)+ "clip_" + str(tempStr) + ".mp4")
+            if(tempSum >= sum):
+                remaining = tempSum - sum - tempMinus
+                if(remaining > 0):
+                    lastIndex = len(AudioTarget) - 1
+                    temp = AudioTarget[lastIndex]
+                    AudioTarget[lastIndex] = temp + ", "+ str(AudioIndex + 1)+ "clip_1.mp4"
+        AudioIndex = AudioIndex + 1
+        
+
         overall.append(sum)
         cutPlan.append([start, i+1])
         sum = 0
@@ -415,6 +436,17 @@ while(i < len(audioSize)):
         i = start - 1
         # print(start)
     i = i + 1
+if(sum > 0 and len(AudioSize2) > 0):
+    i = 0
+    while(i < len(AudioSize2)):
+        tempStr = 1
+        if(AudioIndex == 0):
+            tempStr = 0
+        AudioTarget.append(str(AudioIndex)+ "clip_" + str(tempStr) + ".mp4")
+        i = i + 1
+
+print(AudioTarget)  ###csv的audio
+#############################################################################################
 
 
 if bigsum <= 4500000:
@@ -591,6 +623,7 @@ for i in size2:
 print(output)
 
 
+
 ############################ To Grouping Video and find candidate IDRs #######################################################
 # Grouping the videos to approximately 4.5 mb.
 tot_len = 0
@@ -616,13 +649,48 @@ while i < len(size2):
 
 sample = []  # the sample number of candidate IDRs
 finalStartTime = []
+videoIDR = []
+
 for a in size2:
     sample.append(a[0])
     finalStartTime.append(a[2])
+    videoIDR.append(a[1])
 
 print('Success in get the list: (sample_number, IDR_offset, startTime, byte_range)')
 # print(size2)
 print("Total Candidate partition IDR number: ", len(sample))
+############################ save tape csv file generation #######################################################
+
+###########################################################################################
+if(videoIDR[0] == byteOffset[0]):
+    videoIDR.pop(0)
+print(videoIDR)
+print(byteOffset)
+chunk = []
+num = 1
+target = []
+videosum = 0
+offsetIndex = 0
+
+
+IDRIndex = 0
+while offsetIndex < len(byteOffset):
+    chunk.append(num)
+    if(IDRIndex == len(videoIDR)):
+        target.append("clip_" + str(IDRIndex) + ".mp4")
+        offsetIndex = offsetIndex + 1
+    else:
+        if(videoIDR[IDRIndex] <= byteOffset[offsetIndex]):
+            IDRIndex = IDRIndex + 1
+            if (videoIDR[IDRIndex - 1] < byteOffset[offsetIndex]):
+                temp = target[offsetIndex - 1]
+                target[offsetIndex - 1] = temp + ", clip_" + str(IDRIndex)+".mp4"
+        else:
+            target.append("clip_" + str(IDRIndex) + ".mp4")
+            offsetIndex = offsetIndex + 1
+    num = num + 1
+
+print(target)  #####csv的video
 
 
 
