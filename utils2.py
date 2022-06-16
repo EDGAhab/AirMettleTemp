@@ -151,15 +151,19 @@ def audio_frames_info(Audio,FramesInfoPath):
     file.close()
     return audioSize
 
-def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir):
+def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_output_dir, token):
     if(start != len(audioSize) - 1):
         cutPlan.append([start])
     cutPlan[0] = [cutPlan[0][1]]
-   
+
     i = 0
     while i < len(cutPlan):
+
+
+
+
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c copy -loglevel quiet "{}/{}audio_%d.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/{}audio_%d.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
@@ -167,18 +171,51 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir):
             print('command failed:', cut_cmd)
 
 
-        # Remove useless 
+        # Remove useless and make subtitles
         if (i == 0) :
             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
             os.remove(clip_path1)
+
+            if token == True:
+                sub_cmds='ffmpeg -i {}/{}audio_0.mp4 -map 0:s {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+                )
+                exit_code = os.system(sub_cmds)
+                if exit_code != 0:
+                    print('command failed:', sub_cmds)
+
+            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+            os.remove(clip_path2)
         elif (i > 0  and i < len(cutPlan)-1 ):
             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
             clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
             os.remove(clip_path1)
             os.remove(clip_path2)
+
+            if token == True:
+                sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+                )
+                exit_code = os.system(sub_cmds)
+                if exit_code != 0:
+                    print('command failed:', sub_cmds)
+
+            clip_path3 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+            os.remove(clip_path3)
         else:
             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
             os.remove(clip_path1)
+
+            if token == True:
+                sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+                )
+                exit_code = os.system(sub_cmds)
+                if exit_code != 0:
+                    print('command failed:', sub_cmds)
+
+            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+            os.remove(clip_path2)
         i += 1
 
     print('Succeed in partition audio around 4.5 mb')
@@ -200,7 +237,7 @@ def cut_video(sample, input_file, video_clips_dir):
         if exit_code != 0:
             print('command failed:', cut_cmd)
         print('Succeed in partition videos base on IDR')
-    
+
 
 
 
@@ -265,7 +302,7 @@ def audioCutPlan(audioSize, AudioSize2):
     print('succed in getting videoCutPlan info: start, cutPlan, AudioTarget')
     print('AudioTarget: for reconstruction audio "0clip_0.mp4"')
     return start, cutPlan, AudioTarget
-    
+
 
 
 
@@ -362,7 +399,7 @@ def videoProcessing(tuple, IDR):
 
     # print('succeed in getting size2: the tupple (frame, byte_offset, startTime, size)')
 
-    return size2 
+    return size2
 
 
 #input: size2
@@ -404,4 +441,3 @@ def groupTofindcandidateIDR(size2):
 
     #return videoIDR, newsize2, sample
     return videoIDR, newsize2, sample
-   
