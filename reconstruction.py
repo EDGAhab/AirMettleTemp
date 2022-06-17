@@ -4,7 +4,7 @@ import os
 import argparse
 from utils import *
 import numpy as np
-
+import csv
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_dir', type=str)
@@ -22,11 +22,15 @@ tmp_file = os.path.join(input_dir, 'tmp_file')
 clip_dir = os.path.join(input_dir, 'clips')
 overlap_path = os.path.join(input_dir, 'recon_overlap.csv')
 overlap = [0]
-with open(meta_file, 'rb') as f:
-    overlap.append( np.loadtxt(overlap_path, delimiter=","))
+with open(overlap_path) as f:
+    reader = csv.reader(f)
+    for row in reader:
+        print("******** overlap *********")
+        overlap+=row
+        print(overlap)
 
-print("******** overlap *********")
-print(overlap)
+# print("******** overlap *********")
+# print(overlap)
 if not os.path.isdir(clip_dir):
     raise ValueError('Video clips do not exist ...')
 if not os.path.isfile(meta_file):
@@ -97,8 +101,11 @@ for path, dirs, files in os.walk(clip_dir):
                 fin.write(binascii.unhexlify(contents))
 
 with open(tmp_file, 'rb') as fin:
+    print("*********** vidoe **********" )
+    print(tmp_file)
     video_mdat = binascii.hexlify(fin.read())
 os.remove(tmp_file)
+tmp_file = os.path.join(input_dir, 'tmp_file')
 
 if not os.path.isdir(audio_dir):
     # video only mode
@@ -106,7 +113,7 @@ if not os.path.isdir(audio_dir):
         fout.write(binascii.unhexlify(video_mdat))
 else:
     # video with audio(s)
-    print('Extracting audio&subtitle mdat from ./other_streams...')
+    print('Extracting audio&subtitle mdat from ./audio...')
     audio_mdat = []
     i = 0
     for path, dirs, files in os.walk(audio_dir):
@@ -115,17 +122,39 @@ else:
                 if not args.mute:
                     print('Extracting {}...'.format(f))
                 with open(os.path.join(path, f), 'rb') as fin:
-                    audio_data = binascii.hexlify(fin.read())
+                    audio_mdat = binascii.hexlify(fin.read())
+                    # audio_data = binascii.hexlify(fin.read())
 
-                offsets, atom_exist = parsing_atoms(audio_data, atom_name)
+                # offsets, atom_exist = parsing_atoms(audio_data, atom_name)
+                # sort_idx = argsort([offsets[i] for i in range(len(offsets))])
+                # start_idx = offsets[atom_exist.index('mdat')]+8
+                # start_idx1 = offsets[atom_exist.index('mdat')]+8+int(overlap[i])
+                # print("on overlap start index   "+ str(start_idx) + " vs overlap: " + str(start_idx1))
+
+                # if sort_idx[-1] == len(offsets) - 1:
+                #     audio_mdat.append(audio_data[start_idx:])
+                # else:   
+                #     end_idx = offsets[sort_idx.index(sort_idx[-1]+1)]-8
+                #     audio_mdat.append(audio_data[start_idx:end_idx])
+                offsets, atom_exist = parsing_atoms(audio_mdat, atom_name)
                 sort_idx = argsort([offsets[i] for i in range(len(offsets))])
-                start_idx = offsets[atom_exist.index('mdat')]+8+overlap[i]
-                if sort_idx[-1] == len(offsets) - 1:
-                    audio_mdat.append(audio_data[start_idx:])
-                else:   
-                    end_idx = offsets[sort_idx.index(sort_idx[-1]+1)]-8
-                    audio_mdat.append(audio_data[start_idx:end_idx])
+                start_idx = offsets[atom_exist.index('mdat')]+8
+                if atom_exist[sort_idx[-1]] == 'mdat':
+                    contents = audio_mdat[start_idx:]
+                else:
+                    sort_atom_exist = [atom_exist[i] for i in sort_idx]
+                    sort_offsets = [offsets[i] for i in sort_idx]
+                    end_idx = sort_offsets[sort_atom_exist.index('mdat')+1]-8
+                    contents = audio_mdat[start_idx:end_idx]
+                with open(tmp_file, 'ab') as fin:
+                    fin.write(binascii.unhexlify(contents))
+
             i+=1
+    with open(tmp_file, 'rb') as fin:
+        print("*********** audio **********" )
+        print(tmp_file)
+        audio_mdat = binascii.hexlify(fin.read())
+    os.remove(tmp_file)
 
     # get sample tables
     moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
@@ -177,14 +206,20 @@ else:
                 video_table[2].append([max_stco])
         else:
             with open(recon_file, 'ab') as fout:
+                    # fout.write(binascii.unhexlify(
+                    #     audio_mdat[select_trakid][
+                    #         audio_mdat_offset[select_trakid]: audio_mdat_offset[select_trakid]+audio_stcz[select_trakid][audio_ptr[select_trakid]]*2]
+                    #         ))
                     fout.write(binascii.unhexlify(
-                        audio_mdat[select_trakid][
-                            audio_mdat_offset[select_trakid]: audio_mdat_offset[select_trakid]+audio_stcz[select_trakid][audio_ptr[select_trakid]]*2]
-                            ))
-            audio_mdat_offset[select_trakid] += audio_stcz[select_trakid][audio_ptr[select_trakid]]*2
-            audio_ptr[select_trakid] += 1
-            if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
-                audio_table[select_trakid][2].append([max_stco])
+                        audio_mdat[audio_mdat_offset: audio_mdat_offset+audio_stcz[audio_ptr]*2]))
+            audio_mdat_offset += audio_stcz[audio_ptr]*2
+            audio_ptr += 1
+            if audio_ptr == len(audio_stcz):
+                audio_table[2].append([max_stco])
+            # audio_mdat_offset[select_trakid] += audio_stcz[select_trakid][audio_ptr[select_trakid]]*2
+            # audio_ptr[select_trakid] += 1
+            # if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
+            #     audio_table[select_trakid][2].append([max_stco])
 
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
             flag = False
@@ -193,4 +228,4 @@ else:
 with open(recon_file, 'ab') as fout:
     fout.write(binascii.unhexlify(hexdata[insert_offsets:]))
 print('Succeed in reconstructing file: {}'.format(recon_file))
-exit = os.system('diff {} {} -s'.format(recon_file, noAudio_file))
+exit = os.system('diff {} {} -s'.format(recon_file, original_file))
