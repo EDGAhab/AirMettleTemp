@@ -255,7 +255,7 @@ bigsum = 0   # the whole audio size
 for i in audioSize:
     bigsum = bigsum + i
 ######################### Cut Audio #################################################
-start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2)
+start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
 if bigsum <= 4500000:
     if (subTitleExist == True):

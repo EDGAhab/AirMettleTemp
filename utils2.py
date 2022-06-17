@@ -245,7 +245,7 @@ def cut_video(sample, input_file, video_clips_dir):
 #input: audioSize, AudioSize2
 #output: start, cutPlan, AudioTarget
 
-def audioCutPlan(audioSize, AudioSize2):
+def audioCutPlan(audioSize, AudioSize2, output_dir):
 
     AudioTarget = []  ###输出分类// for reconstruction audio "0clip_0.mp4"
     AudioIndex = 0
@@ -258,6 +258,7 @@ def audioCutPlan(audioSize, AudioSize2):
     start = 0
     i = 0
     remaining = 0
+    recon_overlap = []
     while (i < len(audioSize)):
         overlap = 80000  # 大约五秒？
         sum = sum + audioSize[i]
@@ -284,13 +285,25 @@ def audioCutPlan(audioSize, AudioSize2):
             cutPlan.append([start, i + 1])
             sum = 0
             minusOffset = 0
+            recon_temp = 0
             while (overlap > 0):
                 overlap = overlap - audioSize[i + minusOffset]
+                recon_temp = recon_temp + audioSize[i + minusOffset]
                 minusOffset = minusOffset + 1
+            recon_overlap.append(recon_temp)
             start = i + 1 - minusOffset
             i = start - 1
             # print(start)
         i = i + 1
+    csv_name = os.path.join(output_dir, "recon_overlap.csv")
+    file = open(csv_name, "w")
+    writer = csv.writer(file)
+    csv_line = 'overlap offsets'
+    writer.writerows([csv_line.split(',')])
+    writer.writerow(recon_overlap)
+    file.close()
+
+
     if (sum > 0 and len(AudioSize2) > 0):
         i = 0
         while (i < len(AudioSize2)):
