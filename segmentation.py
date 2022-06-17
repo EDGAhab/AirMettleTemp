@@ -65,7 +65,7 @@ Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
 subTitleExist = False
 
 
-sub_cmds='ffmpeg -i {} -map 0:s:0 {}/subtitle.srt'.format(
+sub_cmds='ffmpeg -i {} -map 0:s:0 -loglevel quiet {}/subtitle.srt'.format(
     input_file, output_dir
 )
 

@@ -184,8 +184,8 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_outpu
                 if exit_code != 0:
                     print('command failed:', sub_cmds)
 
-            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
-            os.remove(clip_path2)
+                clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+                os.remove(clip_path2)
         elif (i > 0  and i < len(cutPlan)-1 ):
             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
             clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
@@ -200,8 +200,8 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_outpu
                 if exit_code != 0:
                     print('command failed:', sub_cmds)
 
-            clip_path3 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
-            os.remove(clip_path3)
+                clip_path3 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+                os.remove(clip_path3)
         else:
             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
             os.remove(clip_path1)
@@ -214,8 +214,8 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_outpu
                 if exit_code != 0:
                     print('command failed:', sub_cmds)
 
-            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
-            os.remove(clip_path2)
+                clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+                os.remove(clip_path2)
         i += 1
 
     print('Succeed in partition audio around 4.5 mb')
@@ -298,8 +298,6 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     csv_name = os.path.join(output_dir, "recon_overlap.csv")
     file = open(csv_name, "w")
     writer = csv.writer(file)
-    csv_line = 'overlap offsets'
-    writer.writerows([csv_line.split(',')])
     writer.writerow(recon_overlap)
     file.close()
 

@@ -3,6 +3,7 @@ import re
 import os
 import argparse
 from utils import *
+import numpy as np
 
 
 parser = argparse.ArgumentParser()
@@ -14,12 +15,18 @@ args = parser.parse_args()
 input_dir = args.input_dir
 original_file = input_dir + '.mp4'
 noAudio_file = os.path.join(input_dir, 'noAudio.mp4')
-meta_file = os.path.join(input_dir, input_dir.split('/')[-1]+'.meta')
+meta_file = os.path.join(input_dir, "intermediate",input_dir.split('/')[-1]+'.meta')
 recon_file = os.path.join(input_dir, input_dir.split('/')[-1]+'_recon.mp4')
-audio_dir = os.path.join(input_dir, 'other_streams')
+audio_dir = os.path.join(input_dir, 'audio')
 tmp_file = os.path.join(input_dir, 'tmp_file')
 clip_dir = os.path.join(input_dir, 'clips')
+overlap_path = os.path.join(input_dir, 'recon_overlap.csv')
+overlap = [0]
+with open(meta_file, 'rb') as f:
+    overlap.append( np.loadtxt(overlap_path, delimiter=","))
 
+print("******** overlap *********")
+print(overlap)
 if not os.path.isdir(clip_dir):
     raise ValueError('Video clips do not exist ...')
 if not os.path.isfile(meta_file):
@@ -101,6 +108,7 @@ else:
     # video with audio(s)
     print('Extracting audio&subtitle mdat from ./other_streams...')
     audio_mdat = []
+    i = 0
     for path, dirs, files in os.walk(audio_dir):
         for f in sorted(files, key=sort_key):
             if 'audio' in f or 'subtitle' in f:
@@ -111,12 +119,13 @@ else:
 
                 offsets, atom_exist = parsing_atoms(audio_data, atom_name)
                 sort_idx = argsort([offsets[i] for i in range(len(offsets))])
-                start_idx = offsets[atom_exist.index('mdat')]+8
+                start_idx = offsets[atom_exist.index('mdat')]+8+overlap[i]
                 if sort_idx[-1] == len(offsets) - 1:
                     audio_mdat.append(audio_data[start_idx:])
                 else:   
                     end_idx = offsets[sort_idx.index(sort_idx[-1]+1)]-8
                     audio_mdat.append(audio_data[start_idx:end_idx])
+            i+=1
 
     # get sample tables
     moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
