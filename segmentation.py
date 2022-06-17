@@ -26,13 +26,11 @@ v_meta = input_file.split('/')[-1].split('.')[0]+'VideoOnly.meta'
 a_meta = input_file.split('/')[-1].split('.')[0]+'AudioOnly.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
 audio_output_dir = os.path.join(output_dir, 'audio')
-subtitle_output_dir = os.path.join(output_dir, 'subtitle')
 intermediate_dir = os.path.join(output_dir, 'intermediate')
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
 os.mkdir(audio_output_dir)
-os.mkdir(subtitle_output_dir)
 os.mkdir(intermediate_dir)
 os.mkdir(os.path.join(output_dir, 'clips'))  # for video clips
 os.mkdir(os.path.join(output_dir, 'other_streams')) # for subtitle
@@ -59,42 +57,6 @@ print('Succeed in generating VideoOnly.mp4 and AudioOnly.mp4')
 
 VideoOnly =  os.path.join(output_dir, 'VideoOnly.mp4')
 Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
-
-
-################## subtitle ##########################
-subTitleExist = False
-
-
-sub_cmds='ffmpeg -i {} -map 0:s:0 -loglevel quiet {}/subtitle.srt'.format(
-    input_file, output_dir
-)
-
-exit_code = os.system(sub_cmds)
-if exit_code != 0:
-    print('command failed:', sub_cmds)
-    print("subtitle doesn't exist")
-else:
-    subTitleExist = True
-    merge_cmds='ffmpeg -i {} -i {}/subtitle.srt -c copy -c:s mov_text {}/AudioSub.mp4'.format(
-        Audio, output_dir, output_dir
-    )
-    exit_code = os.system(merge_cmds)
-    if exit_code != 0:
-        print('command failed:', merge_cmds)
-
-
-if subTitleExist == False:
-    AudioSub = os.path.join(output_dir, 'AudioOnly.mp4')
-else:
-    AudioSub = os.path.join(output_dir, 'AudioSub.mp4')
-
-
-
-
-
-
-
-
 
 # Read VideoOnly.mp4 to get moov_data, track info
 
@@ -258,14 +220,6 @@ for i in audioSize:
 start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
 if bigsum <= 4500000:
-    if (subTitleExist == True):
-        sub_cmds='ffmpeg -i {} -map 0:s:0 {}/subtitleNoClip.srt'.format(
-            input_file, subtitle_output_dir
-        )
-        exit_code = os.system(sub_cmds)
-        if exit_code != 0:
-            print('command failed:', sub_cmds)
-
     cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
@@ -274,8 +228,8 @@ if bigsum <= 4500000:
         print('command failed:', cut_cmd)
     print("Audio file less than 4.5 MB. There is no need to cut it")
 else:
-    print(AudioSub)
-    cut_audio(start, audioSize, cutPlan, AudioSub, audio_output_dir, subtitle_output_dir, subTitleExist)
+    print(Audio)
+    cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir)
 
 #################### Video Processing  ##########################################
 left_df = pd.DataFrame({'start_time': startTime,
