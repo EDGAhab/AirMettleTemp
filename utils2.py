@@ -156,6 +156,7 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_outpu
         cutPlan.append([start])
     cutPlan[0] = [cutPlan[0][1]]
 
+
     i = 0
     while i < len(cutPlan):
 
@@ -163,7 +164,7 @@ def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_outpu
 
 
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/{}audio_%d.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/%d_audio_{}.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
@@ -225,10 +226,14 @@ def cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir):
         cutPlan.append([start])
     cutPlan[0] = [cutPlan[0][1]]
 
+    print("cut plan: ")
+    print(cutPlan)
+
+
     i = 0
     while i < len(cutPlan):
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/{}audio_%d.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
@@ -238,15 +243,15 @@ def cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir):
 
         # Remove useless and make subtitles
         if (i == 0) :
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), 1, i)
             os.remove(clip_path1)
         elif (i > 0  and i < len(cutPlan)-1 ):
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
-            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), 0, i)
+            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),2, i)
             os.remove(clip_path1)
             os.remove(clip_path2)
         else:
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
+            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),0, i)
             os.remove(clip_path1)
         i += 1
 
@@ -281,7 +286,7 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     AudioIndex = 0
 
     targetSize = 4500000  # 4.5MB
-    overlap = 80000  # 大约五秒？
+    overlap = 80000 # 大约五秒？
     cutPlan = []
     overall = []
     sum = 0
@@ -317,8 +322,8 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
             minusOffset = 0
             recon_temp = 0
             while (overlap > 0):
-                overlap = overlap - audioSize[i + minusOffset]
-                recon_temp = recon_temp + audioSize[i + minusOffset]
+                overlap = overlap - audioSize[i - minusOffset]
+                recon_temp = recon_temp + audioSize[i - minusOffset]
                 minusOffset = minusOffset + 1
             recon_overlap.append(recon_temp)
             start = i + 1 - minusOffset
