@@ -151,75 +151,75 @@ def audio_frames_info(Audio,FramesInfoPath):
     file.close()
     return audioSize
 
-def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_output_dir, token):
-    if(start != len(audioSize) - 1):
-        cutPlan.append([start])
-    cutPlan[0] = [cutPlan[0][1]]
+# def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_output_dir, token):
+#     if(start != len(audioSize) - 1):
+#         cutPlan.append([start])
+#     cutPlan[0] = [cutPlan[0][1]]
 
 
-    i = 0
-    while i < len(cutPlan):
+#     i = 0
+#     while i < len(cutPlan):
 
 
 
 
-        string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/%d_audio_{}.mp4"'.format(
-                Audio, string, audio_output_dir, i
-            )
-        exit_code = os.system(cut_cmd)
-        if exit_code != 0:
-            print('command failed:', cut_cmd)
+#         string = ",".join(str(x) for x in cutPlan[i])
+#         cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/%d_audio_{}.mp4"'.format(
+#                 Audio, string, audio_output_dir, i
+#             )
+#         exit_code = os.system(cut_cmd)
+#         if exit_code != 0:
+#             print('command failed:', cut_cmd)
 
 
-        # Remove useless and make subtitles
-        if (i == 0) :
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
-            os.remove(clip_path1)
+#         # Remove useless and make subtitles
+#         if (i == 0) :
+#             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+#             os.remove(clip_path1)
 
-            if token == True:
-                sub_cmds='ffmpeg -i {}/{}audio_0.mp4 -map 0:s {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
-                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
-                )
-                exit_code = os.system(sub_cmds)
-                if exit_code != 0:
-                    print('command failed:', sub_cmds)
+#             if token == True:
+#                 sub_cmds='ffmpeg -i {}/{}audio_0.mp4 -map 0:s {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+#                     os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+#                 )
+#                 exit_code = os.system(sub_cmds)
+#                 if exit_code != 0:
+#                     print('command failed:', sub_cmds)
 
-                clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
-                os.remove(clip_path2)
-        elif (i > 0  and i < len(cutPlan)-1 ):
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
-            clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
-            os.remove(clip_path1)
-            os.remove(clip_path2)
+#                 clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+#                 os.remove(clip_path2)
+#         elif (i > 0  and i < len(cutPlan)-1 ):
+#             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 0)
+#             clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 2)
+#             os.remove(clip_path1)
+#             os.remove(clip_path2)
 
-            if token == True:
-                sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
-                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
-                )
-                exit_code = os.system(sub_cmds)
-                if exit_code != 0:
-                    print('command failed:', sub_cmds)
+#             if token == True:
+#                 sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+#                     os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+#                 )
+#                 exit_code = os.system(sub_cmds)
+#                 if exit_code != 0:
+#                     print('command failed:', sub_cmds)
 
-                clip_path3 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
-                os.remove(clip_path3)
-        else:
-            clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
-            os.remove(clip_path1)
+#                 clip_path3 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+#                 os.remove(clip_path3)
+#         else:
+#             clip_path1 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir),i, 0)
+#             os.remove(clip_path1)
 
-            if token == True:
-                sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
-                    os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
-                )
-                exit_code = os.system(sub_cmds)
-                if exit_code != 0:
-                    print('command failed:', sub_cmds)
+#             if token == True:
+#                 sub_cmds='ffmpeg -i {}/{}audio_1.mp4 -map 0:s:0 {}/subtitle_{}.srt -map 0:a {}/audioclip_{}.mp4'.format(
+#                     os.path.join(audio_output_dir), i, subtitle_output_dir, i, audio_output_dir, i
+#                 )
+#                 exit_code = os.system(sub_cmds)
+#                 if exit_code != 0:
+#                     print('command failed:', sub_cmds)
 
-                clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
-                os.remove(clip_path2)
-        i += 1
+#                 clip_path2 = "{}/{}audio_{}.mp4".format(os.path.join(audio_output_dir), i, 1)
+#                 os.remove(clip_path2)
+#         i += 1
 
-    print('Succeed in partition audio around 4.5 mb')
+#     print('Succeed in partition audio around 4.5 mb')
 
 def cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir):
     if(start != len(audioSize) - 1):
@@ -233,7 +233,7 @@ def cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir):
     i = 0
     while i < len(cutPlan):
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
@@ -285,8 +285,8 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     AudioTarget = []  ###输出分类// for reconstruction audio "0clip_0.mp4"
     AudioIndex = 0
 
-    targetSize = 4500000  # 4.5MB
-    overlap = 80000 # 大约五秒？
+    targetSize = 100000  # 4.5MB
+    overlap = 1000 # 大约五秒？
     cutPlan = []
     overall = []
     sum = 0
@@ -295,7 +295,7 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     remaining = 0
     recon_overlap = []
     while (i < len(audioSize)):
-        overlap = 80000  # 大约五秒？
+        overlap = 1000  # 大约五秒？
         sum = sum + audioSize[i]
         if (sum >= targetSize):
             tempMinus = 0

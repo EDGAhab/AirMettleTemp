@@ -40,7 +40,7 @@ cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/VideoOnly.mp4"'.format(
     input_file, output_dir
 )
 
-cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
+cut_cmd='ffmpeg -i {} -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
     input_file, output_dir
 )
 
@@ -207,6 +207,7 @@ print("Succeed in get video offsets tuple: (byteOffset, byteOffset+byteRange)")
 ############################ To get IDR info #######################################################
 IDRInfoPath =  os.path.join(intermediate_dir, 'IDRinfo.csv')
 startTime, IDRoffset = IDR_Info(input_file, IDRInfoPath)
+
 ############################ To get Video Frame Sample Number info #################################
 FramesInfoPath = os.path.join(intermediate_dir, 'FramesInfo.log')
 offset, frame = video_frames_info(input_file, FramesInfoPath)
@@ -219,8 +220,8 @@ for i in audioSize:
 ######################### Cut Audio #################################################
 start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-if bigsum <= 4500000:
-    cut_cmd='ffmpeg -i {} -c copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
+if bigsum <= 100000:
+    cut_cmd='ffmpeg -i {} -c:s copy -c:a copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
     exit_code = os.system(cut_cmd)
@@ -246,7 +247,9 @@ IDR = []
 for i in joint_table.index:
     IDR.append((joint_table['sample_id'].iloc[i], joint_table['byteoffset'].iloc[i], joint_table['start_time'].iloc[i] ))
 
+
 size2 = videoProcessing(tuple, IDR)
+
 videoIDR, newsize2, sample = groupTofindcandidateIDR(size2)
 ###### Find Video target
 if(videoIDR[0] == byteOffset[0]):

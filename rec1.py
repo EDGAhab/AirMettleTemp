@@ -155,13 +155,13 @@ else:
                 i+=1
                 if atom_exist[sort_idx[-1]] == 'mdat':
                     contents = mdat[start_idx:]
-                    # print("start_idx: ", start_idx)
+                    print("start_idx: ", start_idx)
                 else:
                     sort_atom_exist = [atom_exist[i] for i in sort_idx]
                     sort_offsets = [offsets[i] for i in sort_idx]
                     end_idx = sort_offsets[sort_atom_exist.index('mdat')+1]-8
                     contents = mdat[start_idx:end_idx]
-                    # print("start : " +  str(start_idx) + "  end: " + str(end_idx))
+                    print("start : " +  str(start_idx) + "  end: " + str(end_idx))
                     # print(contents)
                 with open(tmp_file, 'ab') as fin:
                     fin.write(binascii.unhexlify(contents))
