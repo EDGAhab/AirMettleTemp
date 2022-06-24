@@ -141,15 +141,20 @@ def audio_frames_info(Audio,FramesInfoPath):
     if exit_code == 0:
         print('cmd Failed: ', cut_cmd)
 
-    audioSize = []
+    audioOffset = []
     with open(FramesInfoPath, 'r') as file:
         lines = file.read().splitlines()
         for row in lines:
             if "AVIndex stream 0" in row:
-                audioSize.append(int(row.split(',')[9].split(' ', 2)[2]))
+                tempOffset = int(row.split(',')[7].split(' ', 2)[2], 16)
+                audioOffset.append(tempOffset)
 
     file.close()
-    return audioSize
+    audioSize = []
+    for i in range(len(audioOffset) - 1):
+        audioSize.append(audioOffset[i + 1] - audioOffset[i])
+
+    return audioSize 
 
 # def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_output_dir, token):
 #     if(start != len(audioSize) - 1):
@@ -233,12 +238,17 @@ def cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir):
     i = 0
     while i < len(cutPlan):
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -map 0:s -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
         if exit_code != 0:
-            print('command failed:', cut_cmd)
+            cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
+                    Audio, string, audio_output_dir, i
+                )
+            exit_code = os.system(cut_cmd)
+            if exit_code != 0:
+                print('command failed:', cut_cmd)
 
 
         # Remove useless and make subtitles
@@ -260,6 +270,13 @@ def cut_video(sample, input_file, video_clips_dir):
 
     if len(sample) == 1 and sample[0] == 0 :
         print("The partition video is identical to the VideoOnly.mp4")
+        
+        cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/clip_0.mp4"'.format(
+            input_file, video_clips_dir
+        )
+        exit_code = os.system(cut_cmd)
+        if exit_code != 0:
+            print('command failed:', cut_cmd)
     else:
         if 0 in sample:
             sample.remove(0)
@@ -285,8 +302,8 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     AudioTarget = []  ###输出分类// for reconstruction audio "0clip_0.mp4"
     AudioIndex = 0
 
-    targetSize = 100000  # 4.5MB
-    overlap = 1000 # 大约五秒？
+    targetSize = 800000 # 4.5MB
+    overlap = 0 # 大约五秒？
     cutPlan = []
     overall = []
     sum = 0
@@ -295,7 +312,7 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     remaining = 0
     recon_overlap = []
     while (i < len(audioSize)):
-        overlap = 1000  # 大约五秒？
+        overlap = 0  # 大约五秒？
         sum = sum + audioSize[i]
         if (sum >= targetSize):
             tempMinus = 0

@@ -40,14 +40,19 @@ cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/VideoOnly.mp4"'.format(
     input_file, output_dir
 )
 
-cut_cmd='ffmpeg -i {} -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
+cut_cmd='ffmpeg -i {} -map 0:a -map 0:s -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
     input_file, output_dir
 )
 
 
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
-    print('command failed:', cut_cmd)
+    cut_cmd='ffmpeg -i {} -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
+        input_file, output_dir
+    )
+    exit_code = os.system(cut_cmd)
+    if exit_code != 0:
+        print('command failed:', cut_cmd)
 
 exit_code = os.system(cut_cmdv)
 if exit_code != 0:
@@ -220,7 +225,7 @@ for i in audioSize:
 ######################### Cut Audio #################################################
 start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-if bigsum <= 100000:
+if bigsum <= 105000:
     cut_cmd='ffmpeg -i {} -c:s copy -c:a copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
@@ -287,35 +292,38 @@ while offsetIndex < len(byteOffset):
 video_clips_dir = os.path.join(output_dir, 'clips')
 cut_video(sample, input_file, video_clips_dir)
 ######## generate partition csv################3
-import csv
-chunk = global_trunck_num
-byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
-byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
-track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
-allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
-all = 0
-vid = 0
-aud = 0
-while all < len(track_name):
-    if "video" in track_name[all]:
-        allTarget.append(target[vid])
-        vid +=1
-    else:
-        allTarget.append(AudioTarget[aud])
-        aud +=1
+# import csv
+# chunk = global_trunck_num
+# byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
+# byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
+# track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
+# allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
+# all = 0
+# vid = 0
+# aud = 0
+# sub = 0
+# while all < len(track_name):
+#     if "video" in track_name[all]:
+#         allTarget.append(target[vid])
+#         vid +=1
+#     elif "audio" in track_name[all]:
+#         allTarget.append(AudioTarget[aud])
+#         aud +=1
+#     else :
+#         allTarget.append(AudioTarget[aud])
+#         aud +=1
+#     all+=1
 
-    all+=1
 
+# csv_name = os.path.join(output_dir, "partition.csv")
+# file = open(csv_name, "w")
+# writer = csv.writer(file)
+# csv_line = 'chunk, byte_offset, byte_size, track_name, target'
+# writer.writerows([csv_line.split(',')])
 
-csv_name = os.path.join(output_dir, "partition.csv")
-file = open(csv_name, "w")
-writer = csv.writer(file)
-csv_line = 'chunk, byte_offset, byte_size, track_name, target'
-writer.writerows([csv_line.split(',')])
+# w = 0
+# while w < len(chunk):
+#     writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
+#     w+=1
 
-w = 0
-while w < len(chunk):
-    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
-    w+=1
-
-file.close()
+# file.close()
