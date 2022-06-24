@@ -355,11 +355,15 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
     targetSize = 4500000
     currSum = 0
     cutPlan = []
+    counter = 0
+    subtitleTarget = []
     for i in range(len(subtitleSize)):
         currSum = currSum + subtitleSize[i]
         if(currSum >= targetSize):
             cutPlan.append(i)
             currSum = 0
+            counter = counter + 1
+        subtitleTarget.append("subtitle_" + str(counter) + ".mp4")
 
 
     string = ",".join(str(x) for x in cutPlan)
@@ -371,6 +375,8 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
     if exit_code != 0:
         print('command failed:', cut_cmd)
     print('Succeed in partition videos base on IDR')
+
+    return subtitleTarget
 
 
 ###########Audio processing function#####################

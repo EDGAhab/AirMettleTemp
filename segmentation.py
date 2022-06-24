@@ -65,8 +65,11 @@ else:
             input_file, subtitle_output_dir
         )
         exit_code = os.system(cut_cmds)
+        SubtitleTarget = []
+        for i in range(len(subtitleSize)):
+            SubtitleTarget.append("subtitle_0.mp4")
     else:
-        cut_subtitle(Subtitle, subtitle_output_dir, subtitleSize)
+        SubtitleTarget = cut_subtitle(Subtitle, subtitle_output_dir, subtitleSize)
 
 
 
@@ -311,39 +314,39 @@ while offsetIndex < len(byteOffset):
 ############################ To Cut Video #######################################################
 video_clips_dir = os.path.join(output_dir, 'clips')
 cut_video(sample, input_file, video_clips_dir)
-######## generate partition csv################3
-# import csv
-# chunk = global_trunck_num
-# byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
-# byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
-# track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
-# allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
-# all = 0
-# vid = 0
-# aud = 0
-# sub = 0
-# while all < len(track_name):
-#     if "video" in track_name[all]:
-#         allTarget.append(target[vid])
-#         vid +=1
-#     elif "audio" in track_name[all]:
-#         allTarget.append(AudioTarget[aud])
-#         aud +=1
-#     else :
-#         allTarget.append(AudioTarget[aud])
-#         aud +=1
-#     all+=1
+####### generate partition csv################3
+import csv
+chunk = global_trunck_num
+byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
+byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
+track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
+allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
+all = 0
+vid = 0
+aud = 0
+sub = 0
+while all < len(track_name):
+    if "video" in track_name[all]:
+        allTarget.append(target[vid])
+        vid +=1
+    elif "audio" in track_name[all]:
+        allTarget.append(AudioTarget[aud])
+        aud +=1
+    else :
+        allTarget.append(SubtitleTarget[sub])
+        sub +=1
+    all+=1
 
 
-# csv_name = os.path.join(output_dir, "partition.csv")
-# file = open(csv_name, "w")
-# writer = csv.writer(file)
-# csv_line = 'chunk, byte_offset, byte_size, track_name, target'
-# writer.writerows([csv_line.split(',')])
+csv_name = os.path.join(output_dir, "partition.csv")
+file = open(csv_name, "w")
+writer = csv.writer(file)
+csv_line = 'chunk, byte_offset, byte_size, track_name, target'
+writer.writerows([csv_line.split(',')])
 
-# w = 0
-# while w < len(chunk):
-#     writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
-#     w+=1
+w = 0
+while w < len(chunk):
+    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
+    w+=1
 
-# file.close()
+file.close()
