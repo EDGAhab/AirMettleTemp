@@ -26,33 +26,53 @@ v_meta = input_file.split('/')[-1].split('.')[0]+'VideoOnly.meta'
 a_meta = input_file.split('/')[-1].split('.')[0]+'AudioOnly.meta'
 output_dir = os.path.join(input_dir, input_file.split('/')[-1].split('.')[0])
 audio_output_dir = os.path.join(output_dir, 'audio')
+subtitle_output_dir = os.path.join(output_dir, 'subtitle')
 intermediate_dir = os.path.join(output_dir, 'intermediate')
 if os.path.isdir(output_dir):
     shutil.rmtree(output_dir)
 os.mkdir(output_dir)
 os.mkdir(audio_output_dir)
 os.mkdir(intermediate_dir)
+os.mkdir(subtitle_output_dir)
 os.mkdir(os.path.join(output_dir, 'clips'))  # for video clips
-os.mkdir(os.path.join(output_dir, 'other_streams')) # for subtitle
+
 
 
 cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/VideoOnly.mp4"'.format(
     input_file, output_dir
 )
 
-cut_cmd='ffmpeg -i {} -map 0:a -map 0:s -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
-    input_file, output_dir
+cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/AudioOnly.mp4"'.format( #true audio only
+    input_file, output_dir #all audio channel?
 )
+
+subtitleExist = True
+cut_cmds='ffmpeg -i {} -map 0:s -c copy -loglevel quiet {}/subtitleOnly.mp4'.format( #get subtitle
+    input_file, output_dir 
+)
+
+exit_code = os.system(cut_cmds)
+if exit_code != 0:
+    print('subtitle does not exist')
+    subtitleExist = False
+    shutil.rmtree(os.path.join(output_dir, 'subtitle'))
+else:
+    Subtitle =  os.path.join(output_dir , 'subtitleOnly.mp4')
+    S_FramesInfoPath = os.path.join(intermediate_dir, 'Subtitle_FramesInfo.log')
+    subtitleSize = subtitle_frames_info(Subtitle,S_FramesInfoPath)
+    if(sum(subtitleSize) < 4500000): #4.5MB
+        cut_cmds='ffmpeg -i {} -map 0:s -c copy -loglevel quiet {}/subtitle_0.mp4'.format( #get subtitle
+            input_file, subtitle_output_dir 
+        )
+        exit_code = os.system(cut_cmds)
+    else:
+        cut_subtitle(Subtitle, subtitle_output_dir, subtitleSize)
+
 
 
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
-    cut_cmd='ffmpeg -i {} -map 0:a -c:s copy -c:a copy -vn -loglevel quiet "{}/AudioOnly.mp4"'.format(
-        input_file, output_dir
-    )
-    exit_code = os.system(cut_cmd)
-    if exit_code != 0:
-        print('command failed:', cut_cmd)
+    print('command failed:', cut_cmd)
 
 exit_code = os.system(cut_cmdv)
 if exit_code != 0:
@@ -112,9 +132,9 @@ moov_byte_range = byte_range[sort_idx.index(atom_exist.index('moov'))]
 moov_data = hexdata[int(moov_byte_range[0]): int(moov_byte_range[1])]
 trak_byte_range, video_trak_idx, audio_trak_idx, audio_name = finding_traks(
     moov_data, st_name)
-if len(audio_trak_idx) == 0:
-    # print('There\'s no audio/subtitle stream in this mp4...')
-    shutil.rmtree(os.path.join(output_dir, 'other_streams'))
+# if len(audio_trak_idx) == 0:
+#     # print('There\'s no audio/subtitle stream in this mp4...')
+#     shutil.rmtree(os.path.join(output_dir, 'other_streams'))
 
 audio_table = []
 audio_stcz = []
@@ -225,7 +245,7 @@ for i in audioSize:
 ######################### Cut Audio #################################################
 start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-if bigsum <= 105000:
+if bigsum <= 200000:
     cut_cmd='ffmpeg -i {} -c:s copy -c:a copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
@@ -235,7 +255,7 @@ if bigsum <= 105000:
     print("Audio file less than 4.5 MB. There is no need to cut it")
 else:
     print(Audio)
-    cut_audio2(start, audioSize, cutPlan, Audio, audio_output_dir)
+    cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir)
 
 #################### Video Processing  ##########################################
 left_df = pd.DataFrame({'start_time': startTime,
