@@ -48,7 +48,7 @@ cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/AudioOnly.m
 
 subtitleExist = True
 cut_cmds='ffmpeg -i {} -map 0:s -c copy -loglevel quiet {}/subtitleOnly.mp4'.format( #get subtitle
-    input_file, output_dir 
+    input_file, output_dir
 )
 
 exit_code = os.system(cut_cmds)
@@ -62,7 +62,7 @@ else:
     subtitleSize = subtitle_frames_info(Subtitle,S_FramesInfoPath)
     if(sum(subtitleSize) < 4500000): #4.5MB
         cut_cmds='ffmpeg -i {} -map 0:s -c copy -loglevel quiet {}/subtitle_0.mp4'.format( #get subtitle
-            input_file, subtitle_output_dir 
+            input_file, subtitle_output_dir
         )
         exit_code = os.system(cut_cmds)
     else:
@@ -245,8 +245,8 @@ for i in audioSize:
 ######################### Cut Audio #################################################
 start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-if bigsum <= 200000:
-    cut_cmd='ffmpeg -i {} -c:s copy -c:a copy -vn -loglevel quiet "{}/0audio_0.mp4"'.format(
+if bigsum <= 4500000:
+    cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/0audio_0.mp4"'.format(
         input_file, audio_output_dir
     )
     exit_code = os.system(cut_cmd)
