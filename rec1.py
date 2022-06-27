@@ -130,20 +130,21 @@ if not (os.path.isdir(audio_dir) or os.path.isdir(sub_dir)):
     with open(recon_file, 'ab') as fout:
         fout.write(binascii.unhexlify(video_mdat))
 else:
-    overlap = [0]
-    with open(overlap_path) as f:
-        reader = csv.reader(f)
-        for row in reader:
-            print("******** overlap *********")
-            overlap+=row
-    i = 0
-    while i < len(overlap):
-        overlap[i] = int(overlap[i])
-        overlap[i] = overlap[i] * 2
-        i +=1 
-    print(overlap)
-
+    
     if os.path.isdir(audio_dir):
+        overlap = [0]
+        with open(overlap_path) as f:
+            reader = csv.reader(f)
+            for row in reader:
+                print("******** overlap *********")
+                overlap+=row
+        i = 0
+        while i < len(overlap):
+            overlap[i] = int(overlap[i])
+            overlap[i] = overlap[i] * 2
+            i +=1 
+        print(overlap)
+
         # video with audio(s)
         print('Extracting audio from ./audio')
         for path, dirs, files in os.walk(audio_dir):
