@@ -141,7 +141,7 @@ def subtitle_frames_info(input_file, FramesInfoPath):
     exit_code = os.system(cut_cmd)
     if exit_code == 0:
         print('Faild in getting Frames info')
-   
+
     size = []
     # To get IDR info by reading the log file, that the audio size
     with open(FramesInfoPath, 'r') as file:
@@ -174,7 +174,7 @@ def audio_frames_info(Audio,FramesInfoPath):
     for i in range(len(audioOffset) - 1):
         audioSize.append(audioOffset[i + 1] - audioOffset[i])
 
-    return audioSize 
+    return audioSize
 
 # def cut_audio(start, audioSize, cutPlan, Audio, audio_output_dir, subtitle_output_dir, token):
 #     if(start != len(audioSize) - 1):
@@ -301,7 +301,7 @@ def cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir):
     i = 0
     while i < len(cutPlan):
         string = ",".join(str(x) for x in cutPlan[i])
-        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:a copy -vn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
+        cut_cmd='ffmpeg -i {} -f segment -segment_frames {} -reset_timestamps 1 -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/%daudio_{}.mp4"'.format(
                 Audio, string, audio_output_dir, i
             )
         exit_code = os.system(cut_cmd)
@@ -329,7 +329,7 @@ def cut_video(sample, input_file, video_clips_dir):
 
     if len(sample) == 1 and sample[0] == 0 :
         print("The partition video is identical to the VideoOnly.mp4")
-        
+
         cut_cmd='ffmpeg -i {} -c copy -an -loglevel quiet "{}/clip_0.mp4"'.format(
             input_file, video_clips_dir
         )
@@ -355,11 +355,15 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
     targetSize = 4500000
     currSum = 0
     cutPlan = []
+    counter = 0
+    subtitleTarget = []
     for i in range(len(subtitleSize)):
         currSum = currSum + subtitleSize[i]
         if(currSum >= targetSize):
             cutPlan.append(i)
             currSum = 0
+            counter = counter + 1
+        subtitleTarget.append("subtitle_" + str(counter) + ".mp4")
 
 
     string = ",".join(str(x) for x in cutPlan)
@@ -372,6 +376,8 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
         print('command failed:', cut_cmd)
     print('Succeed in partition videos base on IDR')
 
+    return subtitleTarget
+
 
 ###########Audio processing function#####################
 #input: audioSize, AudioSize2
@@ -380,10 +386,10 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
 def audioCutPlan(audioSize, AudioSize2, output_dir):
 
     AudioTarget = []  ###输出分类// for reconstruction audio "0clip_0.mp4"
-    AudioIndex = 0
+    AudioIndex = 80000
 
-    targetSize = 200000 # 4.5MB
-    overlap = 0 # 大约五秒？
+    targetSize = 4500000 # 4.5MB
+    overlap = 80000 # 大约五秒？
     cutPlan = []
     overall = []
     sum = 0
@@ -392,7 +398,7 @@ def audioCutPlan(audioSize, AudioSize2, output_dir):
     remaining = 0
     recon_overlap = []
     while (i < len(audioSize)):
-        overlap = 0 # 大约五秒？
+        overlap = 80000 # 大约五秒？
         sum = sum + audioSize[i]
         if (sum >= targetSize):
             tempMinus = 0
