@@ -11,7 +11,7 @@ def parsing_atoms(data, atom_name):
         offsets.append(8)
         atom_exist.append('ftyp')
         size_ftyp = int(data[: 8], 16)
-        new_start_offset = size_ftyp*2 
+        new_start_offset = size_ftyp*2
     else:
         raise ValueError('There is no Atom \'ftyp\' at the beginnin of this mp4...')
 
@@ -23,7 +23,7 @@ def parsing_atoms(data, atom_name):
                 atom_exist.append('moov')
             offsets.append(new_start_offset+8)
             new_start_offset += 2*int(data[new_start_offset: new_start_offset+8], 16)
-        
+
         elif data[new_start_offset+8: new_start_offset+16] == atom_name['mdat']:
             if data[new_start_offset: new_start_offset+8] == b'00000008':
                 atom_exist.append('mdat(empty)')
@@ -31,7 +31,7 @@ def parsing_atoms(data, atom_name):
                 atom_exist.append('mdat')
             offsets.append(new_start_offset+8)
             new_start_offset += 2*int(data[new_start_offset: new_start_offset+8], 16)
-            
+
         elif data[new_start_offset+8: new_start_offset+16] == atom_name['free']:
             atom_exist.append('free')
             offsets.append(new_start_offset+8)
@@ -47,7 +47,7 @@ def parsing_atoms(data, atom_name):
             raise ValueError('There exist more than one valid Atom \'{}\'...'.format(i))
         if len([idx for idx, atom in enumerate(atom_exist) if atom == i]) < 1:
             raise ValueError('At least one valid Atom \'{}\' is required...'.format(i))
-   
+
     return offsets, atom_exist
 
 
@@ -60,7 +60,7 @@ def parsing_meta_atoms(data, atom_name):
         offsets.append(8)
         atom_exist.append('ftyp')
         size_ftyp = int(data[: 8], 16)
-        new_start_offset = size_ftyp*2 
+        new_start_offset = size_ftyp*2
     else:
         raise ValueError('There is no Atom \'ftyp\' at the beginnin of this mp4...')
 
@@ -72,7 +72,7 @@ def parsing_meta_atoms(data, atom_name):
                 atom_exist.append('moov')
             offsets.append(new_start_offset+8)
             new_start_offset += 2*int(data[new_start_offset: new_start_offset+8], 16)
-        
+
         elif data[new_start_offset+8: new_start_offset+16] == atom_name['mdat']:
             if data[new_start_offset: new_start_offset+8] == b'00000008':
                 atom_exist.append('mdat(empty)')
@@ -80,7 +80,7 @@ def parsing_meta_atoms(data, atom_name):
                 atom_exist.append('mdat')
             offsets.append(new_start_offset+8)
             new_start_offset += 2*8
-            
+
         elif data[new_start_offset+8: new_start_offset+16] == atom_name['free']:
             atom_exist.append('free')
             offsets.append(new_start_offset+8)
@@ -96,7 +96,7 @@ def parsing_meta_atoms(data, atom_name):
             raise ValueError('There exist more than one valid Atom \'{}\'...'.format(i))
         if len([idx for idx, atom in enumerate(atom_exist) if atom == i]) < 1:
             raise ValueError('At least one valid Atom \'{}\' is required...'.format(i))
-   
+
     return offsets, atom_exist
 
 
@@ -111,14 +111,14 @@ def finding_traks(data, st_name):
     trak_start_offset = 16+mvhd_size*2
     trak_byte_range = []
 
-    while trak_start_offset < len(data):  
+    while trak_start_offset < len(data):
         trak_size = int(data[trak_start_offset: trak_start_offset+8], 16)
         if data[trak_start_offset+8: trak_start_offset+16] == st_name['trak']:
             trak_byte_range.append([trak_start_offset, trak_start_offset+trak_size*2])
         trak_start_offset += trak_size*2
 
     assert len(trak_byte_range) == num_trak
-    
+
     video_idx = []
     audio_idx = []
     audio_name = []
@@ -145,9 +145,9 @@ def finding_traks(data, st_name):
                     audio_name.append('subtitle')
     if len(video_idx) > 1:
         raise ValueError('There exist more than one video stream... ')
-    if len(video_idx) < 1:
-        raise ValueError('There is no video stream... ')
-    
+    #if len(video_idx) < 1:
+        #raise ValueError('There is no video stream... ')
+
     return trak_byte_range, video_idx, audio_idx, audio_name
 
 
@@ -159,7 +159,7 @@ def get_bytes_of_chunks(chunk_sample_table, sample_len, num_of_chunk):
     for i in range(len(chunk_sample_table)):
         n = chunk_sample_table[i][0]
         if i+1 < len(chunk_sample_table):
-            nxt = chunk_sample_table[i+1][0] 
+            nxt = chunk_sample_table[i+1][0]
         else:
             nxt = num_of_chunk+1
         for j in range(nxt-n):
@@ -279,7 +279,7 @@ def sort_key(file_name):
 
 
 # def get_sample_table_old(trak_data, st_name):
-    
+
 #     table_list = ['stsc', 'stsz', 'stco']
 #     table_dict = {}
 
@@ -304,7 +304,7 @@ def sort_key(file_name):
 #             else:
 #                 num_of_entries = 1
 #                 starting_offset = position_of_video
-#         else:   
+#         else:
 #             num_of_entries = int(trak_data[position_of_video: position_of_video+8], 16)
 #             starting_offset = position_of_video + 8
 
@@ -328,21 +328,21 @@ def get_sample_table(trak_data, st_name):
         'minf':b'6d696e66',
         'stbl':b'7374626c'
     }
-    
+
     #going down the hierarchy to stbl
     hierarchy = ['mdia', 'minf','stbl']
     for h in hierarchy:
         match = re.finditer(hierarchy_name[h], trak_data)
         all_appearance = [m.start() for m in match if m.start() % 2 == 0]
         trak_data = trak_data[all_appearance[0]-8:]
-        
+
         if h == 'mdia':
             match = re.finditer(st_name['mdhd'], trak_data)
             all_appearance = [m.start() for m in match if m.start() % 2 == 0]
             pos_of_time_scale = all_appearance[0]+16*2
             mdhd_time_scale = int(trak_data[pos_of_time_scale: pos_of_time_scale+8], 16)
             # print("mdhd_time_scale: ", mdhd_time_scale)
-            
+
             #audio or video track
             match = re.finditer(st_name['hdlr'], trak_data)
             all_appearance = [m.start() for m in match if m.start() % 2 == 0]
@@ -351,15 +351,15 @@ def get_sample_table(trak_data, st_name):
             if binascii.unhexlify(trak_data[pos_of_type: pos_of_type+8]) == b'soun' or binascii.unhexlify(trak_data[pos_of_type: pos_of_type+8]) == b'sbtl':
                 is_audio = True
             # print(is_audio)
-            
+
     original_trak_data = trak_data[:]
     #determine which ele is first
     if is_audio:
         # print("This is an audio track! So there is no stss.")
         table_list = ['stsc', 'stsz', 'stco', 'stts']
-    else:  
+    else:
         table_list = ['stsc', 'stsz', 'stco', 'stts','stss']
-        
+
     table_dict = {}
     who_is_first = []
     for i in range(len(table_list)):
@@ -376,7 +376,7 @@ def get_sample_table(trak_data, st_name):
     for i in range(len(sorted_dic)):
         order_dic[sorted_dic[i]['name']] = i
     # print("order dic:", order_dic)
-    
+
     #store the corresponding trak data for each element in order dic
     corresponding_track = []
     ele_trak_data = trak_data[:]
@@ -386,7 +386,7 @@ def get_sample_table(trak_data, st_name):
         size_of_ele = int(ele_trak_data[first_match_pos-8: first_match_pos], 16)
         ele_trak_data = ele_trak_data[first_match_pos-8+size_of_ele*2:]
         corresponding_track.append(ele_trak_data)
-    
+
     for keyword in table_list:
         if order_dic[keyword] != 0:
             trak_data = corresponding_track[order_dic[keyword]-1]
@@ -412,7 +412,7 @@ def get_sample_table(trak_data, st_name):
             num_of_entries = int(trak_data[position_of_video: position_of_video+8], 16)
             starting_offset = position_of_video + 8
 
-        chunk_sample_table = []     
+        chunk_sample_table = []
         if keyword == 'stts':
             # print('stts #entry:', num_of_entries)
             for i in range(num_of_entries):
@@ -435,10 +435,10 @@ def get_sample_table(trak_data, st_name):
                         entry.append(num)
                     starting_offset += 8
                 chunk_sample_table.append(entry)
-                
+
         table_dict[keyword] = chunk_sample_table
         trak_data = original_trak_data
-    
+
     if is_audio:
         return table_dict['stsc'], table_dict['stsz'], table_dict['stco'], table_dict['stts'], -1, mdhd_time_scale
     return table_dict['stsc'], table_dict['stsz'], table_dict['stco'], table_dict['stts'], table_dict['stss'], mdhd_time_scale

@@ -31,7 +31,7 @@ i = 0
 while i < len(overlap):
     overlap[i] = int(overlap[i])
     overlap[i] = overlap[i] * 2
-    i +=1 
+    i +=1
 print(overlap)
 
 if not os.path.isdir(clip_dir):
@@ -40,16 +40,16 @@ if not os.path.isfile(meta_file):
     raise ValueError('Meta-data does not exist ...')
 
 atom_name = {
-    'ftyp': b'66747970', 
-    'moov': b'6d6f6f76', 
-    'free': b'66726565', 
+    'ftyp': b'66747970',
+    'moov': b'6d6f6f76',
+    'free': b'66726565',
     'mdat': b'6d646174'}
-st_name = {    
-    'stsc': b'73747363', 
-    'stsz': b'7374737a', 
-    'stco': b'7374636f', 
-    'stts': b'73747473', 
-    'stss': b'73747373', 
+st_name = {
+    'stsc': b'73747363',
+    'stsz': b'7374737a',
+    'stco': b'7374636f',
+    'stts': b'73747473',
+    'stss': b'73747373',
     'hdlr': b'68646c72',
     'mvhd': b'6d766864',
     'trak': b'7472616b',
@@ -72,11 +72,11 @@ sort_idx = argsort([offsets[i] for i in range(len(offsets))])
 moov_idx = atom_exist.index('moov')
 if sort_idx.index(moov_idx) == len(atom_exist)-1:
     moov_byte_range = [offsets[moov_idx]-8, len(hexdata)]
-else:  
+else:
     moov_byte_range = [offsets[moov_idx]-8, offsets[sort_idx[sort_idx.index(moov_idx)+1]]-8]
-    
+
 # write 'head' metadata into recon file
-insert_offsets = offsets[atom_exist.index('mdat')]+8  
+insert_offsets = offsets[atom_exist.index('mdat')]+8
 with open(recon_file, 'wb') as fout:
     fout.write(binascii.unhexlify(hexdata[:insert_offsets]))
 
@@ -146,7 +146,7 @@ else:
         # video with audio(s)
         print('Extracting audio from ./audio')
         for path, dirs, files in os.walk(audio_dir):
-            i=0 
+            i=0
             for f in sorted(files, key=sort_key):
             # for f in files:
                 if 'audio' in f:
@@ -162,13 +162,11 @@ else:
                     i+=1
                     if atom_exist[sort_idx[-1]] == 'mdat':
                         contents = mdat[start_idx:]
-                        print("start_idx: ", start_idx)
                     else:
                         sort_atom_exist = [atom_exist[i] for i in sort_idx]
                         sort_offsets = [offsets[i] for i in sort_idx]
                         end_idx = sort_offsets[sort_atom_exist.index('mdat')+1]-8
                         contents = mdat[start_idx:end_idx]
-                        print("start : " +  str(start_idx) + "  end: " + str(end_idx))
                         # print(contents)
                     with open(tmp_file, 'ab') as fin:
                         fin.write(binascii.unhexlify(contents))
@@ -176,7 +174,7 @@ else:
         with open(tmp_file, 'rb') as fin:
             audio_mdat = binascii.hexlify(fin.read())
         os.remove(tmp_file)
-        
+
     if os.path.isdir(sub_dir):
         print('Extracting subtitle from ./subtitle')
         for path, dirs, files in os.walk(sub_dir):
@@ -232,7 +230,7 @@ else:
             audio_table.append(get_sample_table(
                 moov_data[int(byte_range[0]): int(byte_range[1])], st_name))
             audio_stcz.append(get_bytes_of_chunks(
-                audio_table[-1][0], audio_table[-1][1], len(audio_table[-1][2])))  
+                audio_table[-1][0], audio_table[-1][1], len(audio_table[-1][2])))
 
     # merge mdat of video and audio(s)
     video_ptr = 0
@@ -247,7 +245,7 @@ else:
     max_video_stco = max([video_table[2][i][0] for i in range(len(video_stcz))])
     max_audio_stco = []
     for i in range(len(audio_stcz)):
-        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))   
+        max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
     max_stco = max(max_audio_stco+[max_video_stco])+1
 
     while flag:
@@ -290,7 +288,7 @@ else:
             audio_ptr[select_trakid] += 1
             if audio_ptr[select_trakid] == len(audio_stcz[select_trakid]):
                 audio_table[select_trakid][2].append([max_stco])
-            
+
         if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
             flag = False
     print("video_mdat_offset: ", video_mdat_offset)

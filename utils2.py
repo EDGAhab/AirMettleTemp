@@ -386,7 +386,7 @@ def cut_subtitle(input_file, subtitle_clips_dir, subtitleSize):
 def audioCutPlan(audioSize, AudioSize2, output_dir):
 
     AudioTarget = []  ###输出分类// for reconstruction audio "0clip_0.mp4"
-    AudioIndex = 0
+    AudioIndex = 80000
 
     targetSize = 4500000 # 4.5MB
     overlap = 80000 # 大约五秒？

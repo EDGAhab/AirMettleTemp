@@ -15,12 +15,13 @@ import pandas as pd
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
+# parser.add_argument('--targetSize', type=str)
 args = parser.parse_args()
 
 
 input_file = args.input_file
 input_dir = os.path.dirname(input_file)
-
+# targetSize = args.targetSize
 meta = input_file.split('/')[-1].split('.')[0]+'.meta'
 v_meta = input_file.split('/')[-1].split('.')[0]+'VideoOnly.meta'
 a_meta = input_file.split('/')[-1].split('.')[0]+'AudioOnly.meta'
@@ -42,6 +43,7 @@ cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/VideoOnly.mp4"'.format(
     input_file, output_dir
 )
 
+audioExist = True
 cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/AudioOnly.mp4"'.format( #true audio only
     input_file, output_dir #all audio channel?
 )
@@ -76,6 +78,13 @@ else:
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
+    print('Audio Does not exist')
+    audioExist = False
+else:
+    audioExist = True
+    Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
+    a_meta_path = os.path.join(intermediate_dir, a_meta)
+    a_meta = gen_meta_file(Audio, a_meta_path)
 
 exit_code = os.system(cut_cmdv)
 if exit_code != 0:
@@ -84,22 +93,13 @@ if exit_code != 0:
 print('Succeed in generating VideoOnly.mp4 and AudioOnly.mp4')
 
 VideoOnly =  os.path.join(output_dir, 'VideoOnly.mp4')
-Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
 
 # Read VideoOnly.mp4 to get moov_data, track info
 
 ######################## generate meta data for videoOnly and AudioOnly  ################################
 v_meta_path = os.path.join(intermediate_dir, v_meta)
-a_meta_path = os.path.join(intermediate_dir, a_meta)
 
 v_meta = gen_meta_file(VideoOnly, v_meta_path)
-a_meta = gen_meta_file(Audio, a_meta_path)
-
-
-
-
-
-
 
 ############### meta data for video & audio file and get byte info ###############
 meta_path = os.path.join(intermediate_dir, meta)
@@ -240,25 +240,26 @@ startTime, IDRoffset = IDR_Info(input_file, IDRInfoPath)
 FramesInfoPath = os.path.join(intermediate_dir, 'FramesInfo.log')
 offset, frame = video_frames_info(input_file, FramesInfoPath)
 ############################ To get Audio Frame Size info ##########################################
-A_FramesInfoPath = os.path.join(intermediate_dir, 'Audio_FramesInfo.log')
-audioSize = audio_frames_info(Audio,A_FramesInfoPath)
-bigsum = 0   # the whole audio size
-for i in audioSize:
-    bigsum = bigsum + i
-######################### Cut Audio #################################################
-start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
+if audioExist == True:
+    A_FramesInfoPath = os.path.join(intermediate_dir, 'Audio_FramesInfo.log')
+    audioSize = audio_frames_info(Audio,A_FramesInfoPath)
+    bigsum = 0   # the whole audio size
+    for i in audioSize:
+        bigsum = bigsum + i
+    ######################### Cut Audio #################################################
+    start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-if bigsum <= 4500000:
-    cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/0audio_0.mp4"'.format(
-        input_file, audio_output_dir
-    )
-    exit_code = os.system(cut_cmd)
-    if exit_code != 0:
-        print('command failed:', cut_cmd)
-    print("Audio file less than 4.5 MB. There is no need to cut it")
-else:
-    print(Audio)
-    cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir)
+    if bigsum <= 4500000:
+        cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/0audio_0.mp4"'.format(
+            input_file, audio_output_dir
+        )
+        exit_code = os.system(cut_cmd)
+        if exit_code != 0:
+            print('command failed:', cut_cmd)
+        print("Audio file less than 4.5 MB. There is no need to cut it")
+    else:
+        print(Audio)
+        cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir)
 
 #################### Video Processing  ##########################################
 left_df = pd.DataFrame({'start_time': startTime,
