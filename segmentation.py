@@ -15,13 +15,12 @@ import pandas as pd
 parser = argparse.ArgumentParser()
 parser.add_argument('--input_file', type=str)
 parser.add_argument('--save_tape', action='store_true')
-# parser.add_argument('--targetSize', type=str)
 args = parser.parse_args()
 
 
 input_file = args.input_file
 input_dir = os.path.dirname(input_file)
-# targetSize = args.targetSize
+
 meta = input_file.split('/')[-1].split('.')[0]+'.meta'
 v_meta = input_file.split('/')[-1].split('.')[0]+'VideoOnly.meta'
 a_meta = input_file.split('/')[-1].split('.')[0]+'AudioOnly.meta'
@@ -43,7 +42,6 @@ cut_cmdv='ffmpeg -i {} -c copy -an -loglevel quiet "{}/VideoOnly.mp4"'.format(
     input_file, output_dir
 )
 
-audioExist = True
 cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/AudioOnly.mp4"'.format( #true audio only
     input_file, output_dir #all audio channel?
 )
@@ -78,13 +76,6 @@ else:
 exit_code = os.system(cut_cmd)
 if exit_code != 0:
     print('command failed:', cut_cmd)
-    print('Audio Does not exist')
-    audioExist = False
-else:
-    audioExist = True
-    Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
-    a_meta_path = os.path.join(intermediate_dir, a_meta)
-    a_meta = gen_meta_file(Audio, a_meta_path)
 
 exit_code = os.system(cut_cmdv)
 if exit_code != 0:
@@ -93,13 +84,22 @@ if exit_code != 0:
 print('Succeed in generating VideoOnly.mp4 and AudioOnly.mp4')
 
 VideoOnly =  os.path.join(output_dir, 'VideoOnly.mp4')
+Audio =  os.path.join(output_dir, 'AudioOnly.mp4')
 
 # Read VideoOnly.mp4 to get moov_data, track info
 
 ######################## generate meta data for videoOnly and AudioOnly  ################################
 v_meta_path = os.path.join(intermediate_dir, v_meta)
+a_meta_path = os.path.join(intermediate_dir, a_meta)
 
 v_meta = gen_meta_file(VideoOnly, v_meta_path)
+a_meta = gen_meta_file(Audio, a_meta_path)
+
+
+
+
+
+
 
 ############### meta data for video & audio file and get byte info ###############
 meta_path = os.path.join(intermediate_dir, meta)
@@ -165,7 +165,8 @@ for i, byte_range in enumerate(trak_byte_range):
         audio_timescale.append(audio_table[-1][-1])
         audio_stts_flat.append(trans_stts_to_flat(audio_table[-1][3]))
 
-
+# print("audio_stcl: ", np.shape(audio_stcl))
+print("audio_timescale: ", audio_timescale)
 
 video_ptr = 0
 video_clip = 0
@@ -185,6 +186,8 @@ for i in range(len(audio_stcz)):
     max_audio_stco.append(max([audio_table[i][2][j][0] for j in range(len(audio_stcz[i]))]))
 max_stco = max(max_audio_stco+[max_video_stco])+1
 
+time_range = []
+
 j = 0
 while flag:
     cuurent_chunk_offset = []
@@ -197,6 +200,11 @@ while flag:
     j += 1
     global_trunck_num.append(j)
     if select_trakid == len(audio_trak_idx):
+        delta_start = sum(video_stts_flat[:video_stcl[video_ptr][0]])
+        delta_end = sum(video_stts_flat[:video_stcl[video_ptr][-1]+1])
+
+        time_range.append(str(round((delta_start/video_timescale), 2)) + "-" + str(round((delta_end/video_timescale), 2)))
+        
         combineByteOffset.append(video_table[2][video_ptr][0])
         combineSize.append(video_stcz[video_ptr])
         byteOffset.append(video_table[2][video_ptr][0])
@@ -209,6 +217,14 @@ while flag:
         if video_ptr == len(video_stcz):
             video_table[2].append([max_stco])
     else :
+
+        delta_start = sum(audio_stts_flat[select_trakid][:audio_stcl[select_trakid][audio_ptr[select_trakid]][0]])
+        temp_end = audio_stcl[select_trakid][audio_ptr[select_trakid]][-1] + 1
+
+        delta_end = sum(audio_stts_flat[select_trakid][:temp_end])
+        time_range.append(str(round((delta_start/audio_timescale[select_trakid]), 2)) + "-" + str(round((delta_end/audio_timescale[select_trakid]), 2)))
+
+
         combineByteOffset.append(audio_table[select_trakid][2][audio_ptr[select_trakid]][0])
         combineSize.append(audio_stcz[select_trakid][audio_ptr[select_trakid]])
         trackName.append('{}_{}'.format(audio_name[select_trakid], audio_trak_idx[select_trakid]))
@@ -226,6 +242,9 @@ while flag:
     if video_ptr == len(video_stcz) and audio_ptr == [len(stcz) for stcz in audio_stcz]:
         flag = False
 
+
+#print("time_range", time_range)
+
 arr1 = np.array(byteOffset)
 arr2 = np.array(byteRange)
 end_arr = np.add(arr1, arr2)
@@ -240,26 +259,25 @@ startTime, IDRoffset = IDR_Info(input_file, IDRInfoPath)
 FramesInfoPath = os.path.join(intermediate_dir, 'FramesInfo.log')
 offset, frame = video_frames_info(input_file, FramesInfoPath)
 ############################ To get Audio Frame Size info ##########################################
-if audioExist == True:
-    A_FramesInfoPath = os.path.join(intermediate_dir, 'Audio_FramesInfo.log')
-    audioSize = audio_frames_info(Audio,A_FramesInfoPath)
-    bigsum = 0   # the whole audio size
-    for i in audioSize:
-        bigsum = bigsum + i
-    ######################### Cut Audio #################################################
-    start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
+A_FramesInfoPath = os.path.join(intermediate_dir, 'Audio_FramesInfo.log')
+audioSize = audio_frames_info(Audio,A_FramesInfoPath)
+bigsum = 0   # the whole audio size
+for i in audioSize:
+    bigsum = bigsum + i
+######################### Cut Audio #################################################
+start, cutPlan, AudioTarget = audioCutPlan(audioSize, AudioSize2, output_dir)
 
-    if bigsum <= 4500000:
-        cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/0audio_0.mp4"'.format(
-            input_file, audio_output_dir
-        )
-        exit_code = os.system(cut_cmd)
-        if exit_code != 0:
-            print('command failed:', cut_cmd)
-        print("Audio file less than 4.5 MB. There is no need to cut it")
-    else:
-        print(Audio)
-        cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir)
+if bigsum <= 4500000:
+    cut_cmd='ffmpeg -i {} -map 0:a -c:a copy -vn -sn -loglevel quiet "{}/0audio_0.mp4"'.format(
+        input_file, audio_output_dir
+    )
+    exit_code = os.system(cut_cmd)
+    if exit_code != 0:
+        print('command failed:', cut_cmd)
+    print("Audio file less than 4.5 MB. There is no need to cut it")
+else:
+    print(Audio)
+    cut_audio3(start, audioSize, cutPlan, Audio, audio_output_dir)
 
 #################### Video Processing  ##########################################
 left_df = pd.DataFrame({'start_time': startTime,
@@ -322,6 +340,7 @@ byte_offset =  combineByteOffset #[26235, 279701, 287502, 388389, 396191]
 byte_size = combineSize #[253466, 7801, 100887, 7802, 199587]
 track_name = trackName #['video_0', 'audio_1', 'video_0', 'audio_1', 'video_0']
 allTarget = [] # ['clip_0', 'clip_1', 'clip_2', 'clip_3', 'clip_4']
+#time_range : 0:02-0:05
 all = 0
 vid = 0
 aud = 0
@@ -342,12 +361,12 @@ while all < len(track_name):
 csv_name = os.path.join(output_dir, "partition.csv")
 file = open(csv_name, "w")
 writer = csv.writer(file)
-csv_line = 'chunk, byte_offset, byte_size, track_name, target'
+csv_line = 'chunk, byte_offset, byte_size, track_name, time_range, target'
 writer.writerows([csv_line.split(',')])
 
 w = 0
 while w < len(chunk):
-    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], allTarget[w]])
+    writer.writerow([chunk[w], byte_offset[w], byte_size[w], track_name[w], time_range[w], allTarget[w]])
     w+=1
 
 file.close()
